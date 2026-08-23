@@ -1,0 +1,6 @@
+{
+  "name": "Manutenção Salão do Reino",
+  "description": "Sistema completo de gerenciamento de manutenção, consertos e serviços do Salão do Reino com Kanban, matriz GUT de prioridade, controle financeiro e consulta ao TM.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
