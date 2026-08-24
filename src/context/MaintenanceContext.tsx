@@ -61,6 +61,9 @@ interface MaintenanceContextType {
   currentUser: UserMember;
   firebaseUser: FirebaseUser | null;
   isAuthenticated: boolean;
+  canEditServices: boolean;
+  isAdmin: boolean;
+  toggleMemberEditPermission: (memberId: string, canEdit: boolean) => Promise<void>;
   activeTab: string;
   filterState: FilterState;
   selectedService: ServiceItem | null;
@@ -269,26 +272,18 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
       if (user) {
-        // Sync or find existing member
         const userEmail = (user.email || '').toLowerCase().trim();
-        const found = members.find((m) => m.email.toLowerCase().trim() === userEmail || m.uid === user.uid);
+        const found = members.find(
+          (m) => (m.email && m.email.toLowerCase().trim() === userEmail) || (m.uid && m.uid === user.uid) || m.id === user.uid
+        );
         if (found) {
           setCurrentUser(found);
-        } else {
-          // Create linked UserMember on the fly if needed
-          const newMember: UserMember = {
-            id: `user-${user.uid.slice(0, 8)}`,
-            uid: user.uid,
-            name: user.displayName || userEmail.split('@')[0] || 'Usuário Salão',
-            email: userEmail || 'usuario@salaodoreino.org',
-            photoURL: user.photoURL || undefined,
-            role: 'COORDENADOR',
-            avatarColor: '#2563eb',
-            assignedCategories: [],
-            active: true,
-          };
-          setDoc(doc(db, 'members', newMember.id), newMember).catch(console.error);
-          setCurrentUser(newMember);
+          try {
+            localStorage.setItem('sr_current_user_v5', JSON.stringify(found));
+            localStorage.setItem('active_user_id', found.id);
+          } catch {
+            // Ignore localStorage errors
+          }
         }
       }
     });
@@ -412,7 +407,7 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const unsubMembers = onSnapshot(
       collection(db, 'members'),
       (snap) => {
-        const realMembers: UserMember[] = [];
+        const rawMembers: UserMember[] = [];
         for (const docSnap of snap.docs) {
           const m = docSnap.data() as UserMember;
           const isLegacyDummy =
@@ -424,31 +419,109 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
           if (isLegacyDummy) {
             deleteDoc(doc(db, 'members', docSnap.id)).catch(console.error);
           } else {
-            realMembers.push({ ...m, id: docSnap.id });
+            rawMembers.push({ ...m, id: docSnap.id });
           }
         }
 
-        // If no members exist yet in Firestore, ensure Pedro Belchior is established
+        // Deduplicate members by email (preferring ADMINISTRADOR or the most recently updated)
+        const memberMap = new Map<string, UserMember>();
+        for (const m of rawMembers) {
+          const key = (m.email || m.id).toLowerCase().trim();
+          const existing = memberMap.get(key);
+          if (!existing) {
+            memberMap.set(key, m);
+          } else {
+            if (m.role === 'ADMINISTRADOR' && existing.role !== 'ADMINISTRADOR') {
+              memberMap.set(key, m);
+            }
+          }
+        }
+        const realMembers = Array.from(memberMap.values());
+
+        // If no members exist yet in Firestore, ensure Pedro Belchior is established as ADMINISTRADOR
         if (realMembers.length === 0) {
           const defaultMember: UserMember = {
             id: 'user-pedro-belchior',
             name: 'Pedro Belchior',
             email: 'belchior87@gmail.com',
-            role: 'COORDENADOR',
+            role: 'ADMINISTRADOR',
             avatarColor: '#2563eb',
             assignedCategories: [],
             active: true,
+            canEdit: true,
           };
           setDoc(doc(db, 'members', defaultMember.id), defaultMember).catch(console.error);
           realMembers.push(defaultMember);
         }
 
-        setMembers(realMembers);
-        setCurrentUser((prev) => {
-          if (isDummyPerson(prev.name) || prev.id.startsWith('user-admin-default')) {
-            return realMembers[0];
+        // If an authenticated user is logged in, ensure their record exists in Firestore
+        const activeAuthUser = auth.currentUser;
+        if (activeAuthUser) {
+          const authEmail = (activeAuthUser.email || '').toLowerCase().trim();
+          const existingAuthMember = realMembers.find(
+            (m) =>
+              (m.email && m.email.toLowerCase().trim() === authEmail) ||
+              (m.uid && m.uid === activeAuthUser.uid) ||
+              m.id === activeAuthUser.uid
+          );
+
+          if (!existingAuthMember && authEmail) {
+            const isUserAdmin = authEmail === 'belchior87@gmail.com';
+            const newMember: UserMember = {
+              id: `user-${activeAuthUser.uid.slice(0, 8)}`,
+              uid: activeAuthUser.uid,
+              name: activeAuthUser.displayName || authEmail.split('@')[0] || 'Usuário Salão',
+              email: authEmail,
+              photoURL: activeAuthUser.photoURL || undefined,
+              role: isUserAdmin ? 'ADMINISTRADOR' : 'COORDENADOR',
+              avatarColor: '#2563eb',
+              assignedCategories: [],
+              active: true,
+              canEdit: isUserAdmin ? true : false,
+            };
+            setDoc(doc(db, 'members', newMember.id), newMember).catch(console.error);
+            realMembers.push(newMember);
           }
-          const found = realMembers.find((m) => m.id === prev.id || (prev.email && m.email === prev.email));
+        }
+
+        setMembers(realMembers);
+
+        setCurrentUser((prev) => {
+          if (activeAuthUser) {
+            const authEmail = (activeAuthUser.email || '').toLowerCase().trim();
+            const matchedAuth = realMembers.find(
+              (m) =>
+                (m.email && m.email.toLowerCase().trim() === authEmail) ||
+                (m.uid && m.uid === activeAuthUser.uid) ||
+                m.id === activeAuthUser.uid
+            );
+            if (matchedAuth) {
+              try {
+                localStorage.setItem('sr_current_user_v5', JSON.stringify(matchedAuth));
+                localStorage.setItem('active_user_id', matchedAuth.id);
+              } catch {
+                // Ignore
+              }
+              return matchedAuth;
+            }
+          }
+
+          const savedActiveId = localStorage.getItem('active_user_id');
+          if (savedActiveId) {
+            const foundById = realMembers.find((m) => m.id === savedActiveId);
+            if (foundById) return foundById;
+          }
+
+          if (isDummyPerson(prev.name) || prev.id.startsWith('user-admin-default')) {
+            const adminOrFirst = realMembers.find((m) => m.email === 'belchior87@gmail.com') || realMembers[0];
+            return adminOrFirst;
+          }
+
+          const found = realMembers.find(
+            (m) =>
+              m.id === prev.id ||
+              (prev.email && m.email && m.email.toLowerCase().trim() === prev.email.toLowerCase().trim())
+          );
           return found || realMembers[0];
         });
       },
@@ -579,6 +652,7 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const user = result.user;
       await updateProfile(user, { displayName: name.trim() });
 
+      const isUserAdmin = email.trim().toLowerCase() === 'belchior87@gmail.com' || role === 'ADMINISTRADOR';
       const newMember: UserMember = {
         id: `user-${user.uid.slice(0, 8)}`,
         uid: user.uid,
@@ -591,6 +665,7 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         ],
         assignedCategories: assignedCategories || [],
         active: true,
+        canEdit: isUserAdmin ? true : false,
       };
 
       await setDoc(doc(db, 'members', newMember.id), newMember);
@@ -652,6 +727,18 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const resetFilters = () => setFilterState(INITIAL_FILTER_STATE);
+
+  const isAdmin = Boolean(
+    (currentUser.email && currentUser.email.toLowerCase().trim() === 'belchior87@gmail.com') ||
+      currentUser.role === 'ADMINISTRADOR' ||
+      (firebaseUser && firebaseUser.email && firebaseUser.email.toLowerCase().trim() === 'belchior87@gmail.com')
+  );
+
+  const canEditServices = Boolean(isAdmin || currentUser.canEdit === true);
+
+  const toggleMemberEditPermission = async (memberId: string, canEdit: boolean) => {
+    await updateMember(memberId, { canEdit });
+  };
 
   const openNewServiceModal = (preselectedCategory?: string) => {
     setPreselectedCategoryForNew(preselectedCategory);
@@ -738,6 +825,7 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setCurrentUser(member);
     try {
       localStorage.setItem('active_user_id', member.id);
+      localStorage.setItem('sr_current_user_v5', JSON.stringify(member));
     } catch {
       // Ignore localStorage errors
     }
@@ -772,8 +860,35 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const executionMonthName: MonthName =
       data.executionMonthName || (monthIndex >= 0 && monthIndex < 12 ? MONTH_NAMES[monthIndex] : 'Agosto');
 
-    const responsibleName = data.responsibleName || currentUser.name;
-    const executorName = data.executorName || data.assignedMember || responsibleName;
+    const responsibleNames: string[] =
+      data.responsibleNames && data.responsibleNames.length > 0
+        ? data.responsibleNames
+        : data.responsibleName
+        ? data.responsibleName.split(',').map((s) => s.trim()).filter(Boolean)
+        : [currentUser.name];
+
+    const responsibleIds: string[] =
+      data.responsibleIds && data.responsibleIds.length > 0
+        ? data.responsibleIds
+        : data.responsibleId
+        ? [data.responsibleId]
+        : responsibleNames.map((rn) => members.find((m) => m.name === rn)?.id || currentUser.id);
+
+    const responsibleName = data.responsibleName || responsibleNames.join(', ');
+
+    const executorNames: string[] =
+      data.executorNames && data.executorNames.length > 0
+        ? data.executorNames
+        : data.executorName
+        ? data.executorName.split(',').map((s) => s.trim()).filter(Boolean)
+        : [responsibleName];
+
+    const executorIds: string[] =
+      data.executorIds && data.executorIds.length > 0
+        ? data.executorIds
+        : executorNames.map((en) => members.find((m) => m.name === en)?.id || '').filter(Boolean);
+
+    const executorName = data.executorName || executorNames.join(', ');
 
     const newId = `serv-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const newService: ServiceItem = {
@@ -796,9 +911,13 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       priority: classification.priority,
 
       risk,
-      responsibleId: data.responsibleId || currentUser.id,
+      responsibleId: responsibleIds[0] || currentUser.id,
       responsibleName,
+      responsibleIds,
+      responsibleNames,
       executorName,
+      executorIds,
+      executorNames,
       supervisorId: data.supervisorId || '',
       supervisorName: data.supervisorName || '',
       supervisorIds: data.supervisorIds || (data.supervisorId ? [data.supervisorId] : []),
@@ -1231,8 +1350,18 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const updateMember = async (id: string, updates: Partial<UserMember>) => {
     setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, ...updates } : m)));
-    if (currentUser.id === id) {
-      setCurrentUser((prev) => ({ ...prev, ...updates }));
+    if (
+      currentUser.id === id ||
+      (currentUser.email && updates.email && currentUser.email.toLowerCase().trim() === updates.email.toLowerCase().trim())
+    ) {
+      const updatedUser = { ...currentUser, ...updates };
+      setCurrentUser(updatedUser);
+      try {
+        localStorage.setItem('sr_current_user_v5', JSON.stringify(updatedUser));
+        localStorage.setItem('active_user_id', id);
+      } catch {
+        // Ignore
+      }
     }
     await updateDoc(doc(db, 'members', id), cleanFirestoreData(updates));
   };
@@ -1485,6 +1614,9 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         currentUser,
         firebaseUser,
         isAuthenticated: !!firebaseUser,
+        canEditServices,
+        isAdmin,
+        toggleMemberEditPermission,
         activeTab,
         filterState,
         selectedService,

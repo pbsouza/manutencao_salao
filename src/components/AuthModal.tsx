@@ -29,6 +29,7 @@ export const AuthModal: React.FC = () => {
     logout,
     members,
     setCurrentUser,
+    openUserManagementModal,
   } = useMaintenance();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -146,15 +147,37 @@ export const AuthModal: React.FC = () => {
                   Sessão ativa com: {firebaseUser.email || currentUser.name}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-xs text-gray-600 pt-1 border-t border-emerald-100">
-                <span>Perfil: <strong className="text-gray-900">{currentUser.name}</strong> ({currentUser.role})</span>
-                <button
-                  onClick={() => logout()}
-                  className="flex items-center gap-1 text-red-600 hover:text-red-700 font-bold text-xs cursor-pointer"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Sair</span>
-                </button>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-gray-600 pt-2 border-t border-emerald-100 gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span>Perfil:</span>
+                  <strong className="text-gray-900">{currentUser.name}</strong>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 uppercase tracking-wide">
+                    {currentUser.role}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAuthModalOpen(false);
+                      openUserManagementModal(currentUser);
+                    }}
+                    className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-bold text-xs cursor-pointer transition"
+                    title="Alterar função (Administrador, Coordenador, etc.) ou dados"
+                  >
+                    <Shield className="w-3.5 h-3.5" />
+                    <span>Editar Função</span>
+                  </button>
+                  <span className="text-gray-300">|</span>
+                  <button
+                    type="button"
+                    onClick={() => logout()}
+                    className="flex items-center gap-1 text-red-600 hover:text-red-700 font-bold text-xs cursor-pointer transition"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sair</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}

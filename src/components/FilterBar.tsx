@@ -37,6 +37,7 @@ export const FilterBar: React.FC = () => {
     filterState.category ||
     filterState.problem ||
     filterState.responsible ||
+    filterState.supervisor ||
     filterState.priority ||
     filterState.risk ||
     filterState.status ||
@@ -45,6 +46,9 @@ export const FilterBar: React.FC = () => {
     filterState.onlyOverdue ||
     filterState.onlyNeedsTM ||
     filterState.onlyHighRisk;
+
+  // Filter members list for supervisor options
+  const supervisorsList = members.filter((m) => m.role === 'SUPERVISOR' || m.role === 'COORDENADOR' || m.role === 'ADMINISTRADOR');
 
   return (
     <div
@@ -71,7 +75,7 @@ export const FilterBar: React.FC = () => {
         </div>
 
         {/* Filter Dropdowns Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
           {/* Categoria */}
           <div>
             <label className="block text-[10px] font-bold uppercase text-gray-500 mb-0.5">Categoria</label>
@@ -101,6 +105,24 @@ export const FilterBar: React.FC = () => {
             >
               <option value="">Todos</option>
               {members.map((m) => (
+                <option key={m.id} value={m.name}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Supervisor Filter */}
+          <div className="bg-indigo-50/50 p-0.5 rounded border border-indigo-100">
+            <label className="block text-[10px] font-bold uppercase text-indigo-800 mb-0.5">Supervisor</label>
+            <select
+              id="filter-supervisor"
+              value={filterState.supervisor || ''}
+              onChange={(e) => setFilterState((prev) => ({ ...prev, supervisor: e.target.value }))}
+              className="w-full bg-white text-indigo-900 text-xs font-medium rounded px-2 py-1.5 border border-indigo-200 focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+            >
+              <option value="">Todos Supervisores</option>
+              {(supervisorsList.length > 0 ? supervisorsList : members).map((m) => (
                 <option key={m.id} value={m.name}>
                   {m.name}
                 </option>

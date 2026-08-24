@@ -65,10 +65,36 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
     locations,
     members,
     currentUser,
+    firebaseUser,
+    canEditServices,
+    isAdmin,
+    setIsAuthModalOpen,
     getBudgetForMonth,
   } = useMaintenance();
 
   const [activeSubTab, setActiveSubTab] = useState<'details' | 'history' | 'safety' | 'photos'>('details');
+
+  // Multi-person initializers
+  const initialResponsibleNames: string[] =
+    service.responsibleNames && service.responsibleNames.length > 0
+      ? service.responsibleNames
+      : service.responsibleName && !isDummyPerson(service.responsibleName)
+      ? service.responsibleName.split(',').map((s) => s.trim()).filter(Boolean)
+      : [currentUser.name || 'Pedro Belchior'];
+
+  const initialExecutorNames: string[] =
+    service.executorNames && service.executorNames.length > 0
+      ? service.executorNames
+      : service.executorName && !isDummyPerson(service.executorName)
+      ? service.executorName.split(',').map((s) => s.trim()).filter(Boolean)
+      : initialResponsibleNames;
+
+  const initialSupervisorNames: string[] =
+    service.supervisorNames && service.supervisorNames.length > 0
+      ? service.supervisorNames
+      : service.supervisorName && !isDummyPerson(service.supervisorName)
+      ? service.supervisorName.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
 
   // Editable fields
   const [title, setTitle] = useState(service.title);
@@ -79,20 +105,15 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
   const [description, setDescription] = useState(service.description);
   const [notes, setNotes] = useState(service.notes);
   const [status, setStatus] = useState<ServiceStatus>(service.status);
-  const [responsibleName, setResponsibleName] = useState(
-    isDummyPerson(service.responsibleName) ? currentUser.name || 'Pedro Belchior' : service.responsibleName
-  );
-  const [executorName, setExecutorName] = useState(
-    isDummyPerson(service.executorName)
-      ? (isDummyPerson(service.responsibleName) ? currentUser.name || 'Pedro Belchior' : service.responsibleName)
-      : (service.executorName || service.assignedMember || service.responsibleName)
-  );
-  const [supervisorName, setSupervisorName] = useState(
-    isDummyPerson(service.supervisorName) ? '' : (service.supervisorName || '')
-  );
+  const [responsibleNames, setResponsibleNames] = useState<string[]>(initialResponsibleNames);
+  const [responsibleName, setResponsibleName] = useState(initialResponsibleNames.join(', '));
+  const [executorNames, setExecutorNames] = useState<string[]>(initialExecutorNames);
+  const [executorName, setExecutorName] = useState(initialExecutorNames.join(', '));
+  const [supervisorNames, setSupervisorNames] = useState<string[]>(initialSupervisorNames);
+  const [supervisorName, setSupervisorName] = useState(initialSupervisorNames.join(', '));
   const [team, setTeam] = useState(service.team || '');
-  const [dueDate, setDueDate] = useState(service.dueDate);
-  const [forecastMonth, setForecastMonth] = useState(service.forecastMonth);
+  const [dueDate, setDueDate] = useState(service.dueDate || '');
+  const [forecastMonth, setForecastMonth] = useState(service.forecastMonth || '');
   const [executionMonthName, setExecutionMonthName] = useState<MonthName>(
     service.executionMonthName || 'Agosto'
   );
@@ -127,11 +148,77 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
   const numEstimated = Number(estimatedCost) || 0;
   const tmCalculation = calculateTMConsultation(highRiskWork, numEstimated, ceiling);
 
+  const addResponsibleChip = (name: string) => {
+    if (!name || !canEditServices) return;
+    if (!responsibleNames.includes(name)) {
+      const updated = [...responsibleNames, name];
+      setResponsibleNames(updated);
+      setResponsibleName(updated.join(', '));
+    }
+  };
+
+  const removeResponsibleChip = (nameToRemove: string) => {
+    if (!canEditServices || responsibleNames.length <= 1) return;
+    const updated = responsibleNames.filter((n) => n !== nameToRemove);
+    setResponsibleNames(updated);
+    setResponsibleName(updated.join(', '));
+  };
+
+  const addExecutorChip = (name: string) => {
+    if (!name || !canEditServices) return;
+    if (!executorNames.includes(name)) {
+      const updated = [...executorNames, name];
+      setExecutorNames(updated);
+      setExecutorName(updated.join(', '));
+    }
+  };
+
+  const removeExecutorChip = (nameToRemove: string) => {
+    if (!canEditServices || executorNames.length <= 1) return;
+    const updated = executorNames.filter((n) => n !== nameToRemove);
+    setExecutorNames(updated);
+    setExecutorName(updated.join(', '));
+  };
+
+  const addSupervisorChip = (name: string) => {
+    if (!name || !canEditServices) return;
+    if (!supervisorNames.includes(name)) {
+      const updated = [...supervisorNames, name];
+      setSupervisorNames(updated);
+      setSupervisorName(updated.join(', '));
+    }
+  };
+
+  const removeSupervisorChip = (nameToRemove: string) => {
+    if (!canEditServices) return;
+    const updated = supervisorNames.filter((n) => n !== nameToRemove);
+    setSupervisorNames(updated);
+    setSupervisorName(updated.join(', '));
+  };
+
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (!canEditServices) {
+      alert('Você não tem permissão para editar dados. O Administrador precisa autorizar seu usuário.');
+      return;
+    }
 
-    const matchedResponsible = members.find((m) => m.name === responsibleName);
-    const matchedSupervisor = members.find((m) => m.name === supervisorName);
+    const finalResponsibleNames =
+      responsibleNames.length > 0 ? responsibleNames : [currentUser.name || 'Pedro Belchior'];
+    const finalResponsibleIds = finalResponsibleNames.map(
+      (rn) => members.find((m) => m.name === rn)?.id || service.responsibleId
+    );
+
+    const finalExecutorNames =
+      executorNames.length > 0 ? executorNames : finalResponsibleNames;
+    const finalExecutorIds = finalExecutorNames
+      .map((en) => members.find((m) => m.name === en)?.id || '')
+      .filter(Boolean);
+
+    const finalSupervisorNames = supervisorNames;
+    const finalSupervisorIds = finalSupervisorNames
+      .map((sn) => members.find((m) => m.name === sn)?.id || '')
+      .filter(Boolean);
 
     await updateService(service.id, {
       title,
@@ -142,13 +229,17 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
       description,
       notes,
       status,
-      responsibleId: matchedResponsible?.id || service.responsibleId,
-      responsibleName,
-      executorName,
-      supervisorId: matchedSupervisor?.id || '',
-      supervisorName: supervisorName || '',
-      supervisorIds: matchedSupervisor ? [matchedSupervisor.id] : [],
-      supervisorNames: supervisorName ? [supervisorName] : [],
+      responsibleId: finalResponsibleIds[0] || service.responsibleId,
+      responsibleName: finalResponsibleNames.join(', '),
+      responsibleIds: finalResponsibleIds,
+      responsibleNames: finalResponsibleNames,
+      executorName: finalExecutorNames.join(', '),
+      executorIds: finalExecutorIds,
+      executorNames: finalExecutorNames,
+      supervisorId: finalSupervisorIds[0] || '',
+      supervisorName: finalSupervisorNames.join(', '),
+      supervisorIds: finalSupervisorIds,
+      supervisorNames: finalSupervisorNames,
       team,
       dueDate,
       forecastMonth,
@@ -226,6 +317,21 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
           id="modal-service-detail"
           className="bg-white border border-slate-200 rounded-xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150"
         >
+          {/* Read-Only Notice Banner */}
+          {!canEditServices && (
+            <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between text-xs text-amber-800 font-medium">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  <strong>Modo Somente Leitura:</strong> Seu usuário não possui autorização para salvar alterações nos dados. Peça ao Administrador para conceder permissão.
+                </span>
+              </div>
+              <span className="px-2 py-0.5 bg-amber-200/80 text-amber-900 rounded font-bold text-[10px]">
+                Acesso Limitado
+              </span>
+            </div>
+          )}
+
           {/* Top Header */}
           <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50 sticky top-0 z-20">
             <div className="flex items-center gap-3">
@@ -236,7 +342,7 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
                 <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight line-clamp-1">
                   {title || service.title}
                 </h2>
-                <div className="flex items-center gap-2 text-xs text-slate-500">
+                <div className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
                   <span>Registrado em {formatDateBR(service.identifiedDate)}</span>
                   <span>•</span>
                   <span className="text-blue-700 font-semibold">{category}</span>
@@ -244,11 +350,11 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
                   <span className="bg-slate-200 text-slate-700 px-2 py-0.2 rounded text-[11px] font-bold">
                     Status Oficial: {service.officialStatus}
                   </span>
-                  {supervisorName && (
+                  {supervisorNames.length > 0 && (
                     <>
                       <span>•</span>
                       <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.2 rounded text-[11px] font-bold flex items-center gap-1">
-                        <UserCheck className="w-3 h-3" /> Sup: {supervisorName}
+                        <UserCheck className="w-3 h-3" /> Sup: {supervisorNames.join(', ')}
                       </span>
                     </>
                   )}
@@ -257,14 +363,16 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
             </div>
 
             <div className="flex items-center gap-1.5">
-              <button
-                id="btn-delete-service"
-                onClick={handleDeleteClick}
-                title="Excluir serviço"
-                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {firebaseUser && canEditServices && (
+                <button
+                  id="btn-delete-service"
+                  onClick={handleDeleteClick}
+                  title="Excluir serviço"
+                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
               <button
                 id="btn-close-detail-modal"
                 onClick={onClose}
@@ -336,18 +444,24 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
                 {/* Status selector */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-600 font-bold">Etapa Kanban:</span>
-                  <select
-                    id="detail-select-status"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as ServiceStatus)}
-                    className="bg-white text-slate-900 text-xs font-bold rounded-lg px-3 py-1.5 border border-slate-300 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                  >
-                    {KANBAN_COLUMNS.map((col) => (
-                      <option key={col.status} value={col.status}>
-                        {col.label}
-                      </option>
-                    ))}
-                  </select>
+                  {firebaseUser ? (
+                    <select
+                      id="detail-select-status"
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value as ServiceStatus)}
+                      className="bg-white text-slate-900 text-xs font-bold rounded-lg px-3 py-1.5 border border-slate-300 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                    >
+                      {KANBAN_COLUMNS.map((col) => (
+                        <option key={col.status} value={col.status}>
+                          {col.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="bg-white text-slate-800 text-xs font-bold rounded-lg px-3 py-1.5 border border-slate-300">
+                      {KANBAN_COLUMNS.find((c) => c.status === status)?.label || status}
+                    </span>
+                  )}
                 </div>
 
                 {/* Priority & Risk Badges */}
@@ -395,9 +509,10 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
                   </label>
                   <input
                     type="text"
+                    disabled={!firebaseUser}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full bg-white text-slate-900 text-xs rounded-lg px-3 py-2 border border-slate-300 focus:ring-2 focus:ring-blue-500 font-medium"
+                    className="w-full bg-white text-slate-900 text-xs rounded-lg px-3 py-2 border border-slate-300 focus:ring-2 focus:ring-blue-500 font-medium disabled:bg-gray-100 disabled:text-gray-600"
                   />
                 </div>
 
@@ -406,9 +521,10 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
                     Local Exato no Salão
                   </label>
                   <select
+                    disabled={!firebaseUser}
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    className="w-full bg-white text-slate-900 text-xs rounded-lg px-3 py-2 border border-slate-300 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                    className="w-full bg-white text-slate-900 text-xs rounded-lg px-3 py-2 border border-slate-300 focus:ring-2 focus:ring-blue-500 cursor-pointer disabled:bg-gray-100 disabled:text-gray-600"
                   >
                     {locations.map((loc) => (
                       <option key={loc.id} value={loc.name}>
@@ -416,6 +532,83 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
                       </option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              {/* Due Date & Forecast Controls (Data de Previsão para Conclusão) */}
+              <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-blue-900 uppercase tracking-tight">
+                    <Calendar className="w-4 h-4 text-blue-600" />
+                    <span>Previsão de Conclusão & Prazos de Manutenção</span>
+                  </div>
+                  {overdue && (
+                    <span className="px-2 py-0.5 bg-red-100 text-red-700 border border-red-200 rounded text-[10px] font-bold flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 text-red-600" /> Prazo Vencido
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Data de Previsão para Conclusão
+                    </label>
+                    <input
+                      type="date"
+                      disabled={!firebaseUser}
+                      value={dueDate}
+                      onChange={(e) => {
+                        const newDate = e.target.value;
+                        setDueDate(newDate);
+                        if (newDate) {
+                          setForecastMonth(newDate.substring(0, 7));
+                        }
+                      }}
+                      className="w-full bg-white text-slate-900 text-xs rounded-lg px-3 py-2 border border-slate-300 focus:ring-2 focus:ring-blue-500 font-semibold disabled:bg-gray-100 disabled:text-gray-600"
+                    />
+                    <span className="text-[10px] text-slate-500 block mt-1">
+                      Prazo limite planejado para entrega do serviço
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Mês de Previsão (YYYY-MM)
+                    </label>
+                    <input
+                      type="text"
+                      disabled={!firebaseUser}
+                      placeholder="Ex: 2026-08"
+                      value={forecastMonth}
+                      onChange={(e) => setForecastMonth(e.target.value)}
+                      className="w-full bg-white text-slate-900 text-xs rounded-lg px-3 py-2 border border-slate-300 focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-600"
+                    />
+                    <span className="text-[10px] text-slate-500 block mt-1">
+                      Para cálculo de teto orçamentário
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Mês de Execução
+                    </label>
+                    <select
+                      disabled={!firebaseUser}
+                      value={executionMonthName}
+                      onChange={(e) => setExecutionMonthName(e.target.value as MonthName)}
+                      className="w-full bg-white text-slate-900 text-xs rounded-lg px-3 py-2 border border-slate-300 focus:ring-2 focus:ring-blue-500 cursor-pointer disabled:bg-gray-100 disabled:text-gray-600"
+                    >
+                      {MONTH_NAMES.map((m) => (
+                        <option key={m} value={m}>
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-[10px] text-slate-500 block mt-1">
+                      Referência contábil no salão
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -472,57 +665,161 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
 
               {/* Responsibles, Executor & Supervisor */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Responsável Padrão
+                {/* Responsáveis da Área */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2">
+                  <label className="block text-xs font-bold text-slate-700 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <User className="w-3.5 h-3.5 text-slate-500" />
+                      Responsáveis ({responsibleNames.length})
+                    </span>
                   </label>
-                  <select
-                    value={responsibleName}
-                    onChange={(e) => setResponsibleName(e.target.value)}
-                    className="w-full bg-white text-slate-900 text-xs rounded-lg px-3 py-2 border border-slate-300 cursor-pointer"
-                  >
-                    {members.map((m) => (
-                      <option key={m.id} value={m.name}>
-                        {m.name} ({m.role})
-                      </option>
+
+                  {/* Chips */}
+                  <div className="flex flex-wrap gap-1 min-h-[30px] items-center p-1.5 bg-slate-50 rounded-md border border-slate-200">
+                    {responsibleNames.map((rn) => (
+                      <span
+                        key={rn}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 border border-blue-200 rounded-md text-xs font-medium"
+                      >
+                        {rn}
+                        {canEditServices && responsibleNames.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeResponsibleChip(rn)}
+                            className="text-blue-600 hover:text-red-600 cursor-pointer"
+                            title="Remover responsável"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </span>
                     ))}
-                  </select>
+                  </div>
+
+                  {canEditServices && members.length > 0 && (
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) addResponsibleChip(e.target.value);
+                      }}
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">+ Adicionar Responsável...</option>
+                      {members
+                        .filter((m) => !responsibleNames.includes(m.name))
+                        .map((m) => (
+                          <option key={m.id} value={m.name}>
+                            {m.name} ({m.role})
+                          </option>
+                        ))}
+                    </select>
+                  )}
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Executor Designado (Executa)
+                {/* Executores Designados */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2">
+                  <label className="block text-xs font-bold text-slate-700 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <User className="w-3.5 h-3.5 text-emerald-600" />
+                      Executores ({executorNames.length})
+                    </span>
                   </label>
-                  <select
-                    value={executorName}
-                    onChange={(e) => setExecutorName(e.target.value)}
-                    className="w-full bg-white text-slate-900 text-xs rounded-lg px-3 py-2 border border-slate-300 font-medium cursor-pointer"
-                  >
-                    {members.map((m) => (
-                      <option key={m.id} value={m.name}>
-                        {m.name} ({m.role})
-                      </option>
+
+                  {/* Chips */}
+                  <div className="flex flex-wrap gap-1 min-h-[30px] items-center p-1.5 bg-slate-50 rounded-md border border-slate-200">
+                    {executorNames.map((en) => (
+                      <span
+                        key={en}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-md text-xs font-medium"
+                      >
+                        {en}
+                        {canEditServices && executorNames.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeExecutorChip(en)}
+                            className="text-emerald-700 hover:text-red-600 cursor-pointer"
+                            title="Remover executor"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </span>
                     ))}
-                  </select>
+                  </div>
+
+                  {canEditServices && members.length > 0 && (
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) addExecutorChip(e.target.value);
+                      }}
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs focus:ring-1 focus:ring-emerald-500"
+                    >
+                      <option value="">+ Adicionar Executor...</option>
+                      {members
+                        .filter((m) => !executorNames.includes(m.name))
+                        .map((m) => (
+                          <option key={m.id} value={m.name}>
+                            {m.name} ({m.role})
+                          </option>
+                        ))}
+                    </select>
+                  )}
                 </div>
 
-                <div className="bg-indigo-50/60 p-2 rounded-lg border border-indigo-100">
-                  <label className="block text-xs font-bold text-indigo-900 mb-1 flex items-center gap-1">
-                    <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
-                    Supervisor Designado
+                {/* Supervisores Designados */}
+                <div className="bg-indigo-50/70 p-3 rounded-xl border border-indigo-200 shadow-2xs space-y-2">
+                  <label className="block text-xs font-bold text-indigo-900 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
+                      Supervisores ({supervisorNames.length})
+                    </span>
                   </label>
-                  <select
-                    value={supervisorName}
-                    onChange={(e) => setSupervisorName(e.target.value)}
-                    className="w-full bg-white text-indigo-950 text-xs font-semibold rounded-lg px-3 py-1.5 border border-indigo-200 cursor-pointer"
-                  >
-                    <option value="">-- Sem Supervisor Designado --</option>
-                    {members.map((m) => (
-                      <option key={m.id} value={m.name}>
-                        {m.name} ({m.role})
-                      </option>
-                    ))}
-                  </select>
+
+                  {/* Chips */}
+                  <div className="flex flex-wrap gap-1 min-h-[30px] items-center p-1.5 bg-white rounded-md border border-indigo-100">
+                    {supervisorNames.length === 0 ? (
+                      <span className="text-[11px] text-slate-400 italic">Sem supervisor designado</span>
+                    ) : (
+                      supervisorNames.map((sn) => (
+                        <span
+                          key={sn}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-900 border border-indigo-200 rounded-md text-xs font-medium"
+                        >
+                          {sn}
+                          {canEditServices && (
+                            <button
+                              type="button"
+                              onClick={() => removeSupervisorChip(sn)}
+                              className="text-indigo-700 hover:text-red-600 cursor-pointer"
+                              title="Remover supervisor"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </span>
+                      ))
+                    )}
+                  </div>
+
+                  {canEditServices && members.length > 0 && (
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) addSupervisorChip(e.target.value);
+                      }}
+                      className="w-full px-2.5 py-1.5 bg-white border border-indigo-200 rounded-md text-xs focus:ring-1 focus:ring-indigo-500 font-semibold text-indigo-950"
+                    >
+                      <option value="">+ Designar Supervisor...</option>
+                      {members
+                        .filter((m) => !supervisorNames.includes(m.name))
+                        .map((m) => (
+                          <option key={m.id} value={m.name}>
+                            {m.name} ({m.role})
+                          </option>
+                        ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -626,12 +923,14 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
                         className="w-full h-full object-cover cursor-pointer"
                         onClick={() => setPreviewImage(att.url)}
                       />
-                      <button
-                        onClick={() => handleRemoveAttachment(att.id)}
-                        className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {firebaseUser && canEditServices && (
+                        <button
+                          onClick={() => handleRemoveAttachment(att.id)}
+                          className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -769,15 +1068,17 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
         {/* Modal Footer */}
         <div className="p-4 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-50">
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleDeleteClick}
-              className="px-3 py-1.5 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 rounded-lg transition flex items-center gap-1.5 cursor-pointer self-start"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Excluir Problema</span>
-            </button>
-            <span className="text-[11px] text-slate-400 hidden sm:inline">
+            {firebaseUser && canEditServices && (
+              <button
+                type="button"
+                onClick={handleDeleteClick}
+                className="px-3 py-1.5 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 rounded-lg transition flex items-center gap-1.5 cursor-pointer self-start"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Excluir Problema</span>
+              </button>
+            )}
+            <span className="text-[11px] text-slate-400">
               Atualizado: {formatDateBR(service.updatedAt)}
             </span>
           </div>
@@ -790,14 +1091,20 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
             >
               Fechar
             </button>
-            <button
-              type="button"
-              onClick={() => handleSave()}
-              className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-2xs hover:shadow transition flex items-center gap-1.5 cursor-pointer"
-            >
-              <Save className="w-4 h-4" />
-              Salvar no Firestore
-            </button>
+            {firebaseUser && canEditServices ? (
+              <button
+                type="button"
+                onClick={() => handleSave()}
+                className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-2xs hover:shadow transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                Salvar Alterações
+              </button>
+            ) : (
+              <span className="px-3 py-1.5 bg-slate-100 text-slate-500 border border-slate-200 rounded-lg text-xs font-semibold">
+                Somente Leitura
+              </span>
+            )}
           </div>
         </div>
       </div>

@@ -32,7 +32,13 @@ export type ServiceStatus =
   | 'CONCLUÍDO'
   | 'CANCELADO';
 
-export type UserRole = 'ADMINISTRADOR' | 'COORDENADOR' | 'SUPERVISOR' | 'RESPONSÁVEL' | 'COLABORADOR';
+export type UserRole =
+  | 'ADMINISTRADOR'
+  | 'COORDENADOR'
+  | 'SUPERVISOR'
+  | 'RESPONSÁVEL'
+  | 'EXECUTOR'
+  | 'COLABORADOR';
 
 export interface UserMember {
   id: string;
@@ -45,14 +51,19 @@ export interface UserMember {
   active: boolean;
   uid?: string; // Firebase Auth UID
   photoURL?: string;
+  canEdit?: boolean; // Permissão de edição concedida pelo Administrador após login
 }
 
 export interface BatchAssignPayload {
   serviceIds: string[];
   executorName?: string;
+  executorNames?: string[];
   responsibleName?: string;
+  responsibleNames?: string[];
   supervisorName?: string;
+  supervisorNames?: string[];
   supervisorId?: string;
+  supervisorIds?: string[];
   status?: ServiceStatus;
   dueDate?: string;
 }
@@ -130,8 +141,12 @@ export interface ServiceItem {
   
   // Responsibility, Execution & Supervision
   responsibleId: string;
-  responsibleName: string; // Responsável pela área ou execução
+  responsibleName: string; // Responsável principal ou exibição resumida
+  responsibleIds?: string[]; // Suporte a múltiplos responsáveis
+  responsibleNames?: string[]; // Nomes dos múltiplos responsáveis
   executorName: string; // Quem executa na prática / voluntário designado
+  executorIds?: string[]; // Suporte a múltiplos executores
+  executorNames?: string[]; // Nomes dos múltiplos executores
   supervisorId?: string; // ID do Supervisor designado
   supervisorName?: string; // Nome do Supervisor designado
   supervisorIds?: string[]; // Suporte a múltiplos supervisores designados

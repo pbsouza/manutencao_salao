@@ -39,6 +39,8 @@ export const ProblemTemplatesModal: React.FC = () => {
     seedPreFixedData,
     batchCreateServicesFromTemplates,
     openNewServiceModal,
+    firebaseUser,
+    canEditServices,
   } = useMaintenance();
 
   const [search, setSearch] = useState('');
@@ -650,13 +652,15 @@ export const ProblemTemplatesModal: React.FC = () => {
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
 
-                      <button
-                        onClick={() => setTemplateToDelete({ id: tpl.id, name: tpl.problem })}
-                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded cursor-pointer"
-                        title="Excluir modelo"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {firebaseUser && canEditServices && (
+                        <button
+                          onClick={() => setTemplateToDelete({ id: tpl.id, name: tpl.problem })}
+                          className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded cursor-pointer"
+                          title="Excluir modelo"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

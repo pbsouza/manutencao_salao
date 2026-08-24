@@ -122,6 +122,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     importDatabaseJSON,
     filterState,
     monthlyBudgets,
+    firebaseUser,
+    canEditServices,
+    setIsAuthModalOpen,
   } = useMaintenance();
 
   const jsonInputRef = useRef<HTMLInputElement>(null);
@@ -136,6 +139,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const handleJSONFileRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!canEditServices) {
+      alert('Você não tem permissão para restaurar backups. O Administrador precisa autorizar seu usuário.');
+      return;
+    }
 
     setJsonRestoreStatus('Restaurando backup...');
     const reader = new FileReader();
@@ -183,6 +191,15 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     // Responsible
     if (filterState.responsible && item.responsibleName !== filterState.responsible) {
       return false;
+    }
+
+    // Supervisor
+    if (filterState.supervisor) {
+      const supQ = filterState.supervisor.toLowerCase().trim();
+      const matchSup =
+        (item.supervisorName && item.supervisorName.toLowerCase().trim() === supQ) ||
+        (item.supervisorNames && item.supervisorNames.some((n) => n.toLowerCase().trim() === supQ));
+      if (!matchSup) return false;
     }
 
     // Priority
@@ -247,12 +264,23 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   // Drag and Drop handlers
   const handleDragStart = (e: React.DragEvent, serviceId: string) => {
+    if (!firebaseUser) {
+      e.preventDefault();
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (!canEditServices) {
+      e.preventDefault();
+      alert('Você não tem permissão para mover cards. O Administrador precisa autorizar a edição.');
+      return;
+    }
     e.dataTransfer.setData('text/plain', serviceId);
     setDraggedServiceId(serviceId);
   };
 
   const handleDragOver = (e: React.DragEvent, status: ServiceStatus) => {
     e.preventDefault();
+    if (!firebaseUser || !canEditServices) return;
     if (activeDropColumn !== status) {
       setActiveDropColumn(status);
     }
@@ -265,6 +293,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const handleDrop = (e: React.DragEvent, targetStatus: ServiceStatus) => {
     e.preventDefault();
     setActiveDropColumn(null);
+    if (!firebaseUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (!canEditServices) {
+      alert('Você não tem permissão para alterar o status dos serviços.');
+      return;
+    }
     const serviceId = e.dataTransfer.getData('text/plain') || draggedServiceId;
     if (!serviceId) return;
 
@@ -336,7 +372,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             Custo Previsto
           </span>
           <div className="flex items-baseline justify-between">
-            <span className="text-sm sm:text-lg lg:text-xl font-black text-emerald-700 truncate">
+            <span className="text-sm sm:lg lg:text-xl font-black text-emerald-700 truncate">
               {formatCurrencyBRL(totalEstimated)}
             </span>
             <span className="text-emerald-600 text-[9px] sm:text-[10px] font-bold hidden sm:inline">planejado</span>
@@ -504,7 +540,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* VIEW MODE 1: SINGLE COLUMN TAB FOCUS (Optimal for Mobile, Tablet, Smartwatches) */}
       {viewMode === 'tabs' && (
-        <div className="flex-1 p-2.5 sm:p-4 max-w-2xl mx-auto w-full">
+        <div className="flex-1 p-2.5 sm:p-4 max-w-2xl mx-auto w-full pb-28 sm:pb-24 md:pb-8">
           <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden flex flex-col min-h-[400px]">
             {/* Column Title with Prev / Next navigators */}
             <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
@@ -553,7 +589,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             </div>
 
             {/* Column Cards */}
-            <div className="p-2.5 sm:p-3 flex-1 space-y-2.5 bg-gray-50/50 overflow-y-auto">
+            <div className="p-2.5 sm:p-3 flex-1 space-y-2.5 bg-gray-50/50 overflow-y-auto pb-8">
               {activeColServices.length === 0 ? (
                 <div className="py-12 px-4 text-center border-2 border-dashed border-gray-200 rounded-xl bg-white">
                   <p className="text-xs font-bold text-gray-600">Nenhum serviço nesta etapa</p>
@@ -600,7 +636,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* VIEW MODE 2: LIST VIEW STREAM (Compact for all devices) */}
       {viewMode === 'list' && (
-        <div className="flex-1 p-2.5 sm:p-4 max-w-3xl mx-auto w-full space-y-4">
+        <div className="flex-1 p-2.5 sm:p-4 max-w-3xl mx-auto w-full space-y-4 pb-28 sm:pb-24 md:pb-8">
           {KANBAN_COLUMNS.map((col) => {
             const colServices = filteredServices.filter(
               (s) => normalizeServiceStatus(s.status) === col.status
@@ -651,8 +687,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* VIEW MODE 3: STANDARD MULTI-COLUMN BOARD (Horizontal Scroll) */}
       {viewMode === 'columns' && (
-        <div id="kanban-board-container" className="flex-1 overflow-x-auto p-2.5 sm:p-4">
-          <div className="flex items-start gap-3 sm:gap-4 min-w-[1720px] pb-12">
+        <div id="kanban-board-container" className="flex-1 overflow-x-auto p-2.5 sm:p-4 pb-28 sm:pb-24 md:pb-8">
+          <div className="flex items-start gap-3 sm:gap-4 min-w-[1720px] pb-16">
             {KANBAN_COLUMNS.map((col) => {
               const colServices = filteredServices.filter(
                 (s) => normalizeServiceStatus(s.status) === col.status

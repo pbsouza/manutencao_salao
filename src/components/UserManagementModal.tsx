@@ -36,6 +36,9 @@ export const UserManagementModal: React.FC = () => {
     updateMember,
     deleteMember,
     categories,
+    firebaseUser,
+    canEditServices,
+    isAdmin,
   } = useMaintenance();
 
   const [name, setName] = useState('');
@@ -45,6 +48,7 @@ export const UserManagementModal: React.FC = () => {
   const [avatarColor, setAvatarColor] = useState('#2563eb');
   const [assignedCategories, setAssignedCategories] = useState<string[]>([]);
   const [active, setActive] = useState(true);
+  const [canEdit, setCanEdit] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
@@ -55,10 +59,13 @@ export const UserManagementModal: React.FC = () => {
       setName(editingMemberForModal.name || '');
       setEmail(editingMemberForModal.email || '');
       setPhone(editingMemberForModal.phone || '');
-      setRole(editingMemberForModal.role || 'RESPONSÁVEL');
+      const memberRole = editingMemberForModal.role || 'RESPONSÁVEL';
+      setRole(memberRole);
       setAvatarColor(editingMemberForModal.avatarColor || '#2563eb');
       setAssignedCategories(editingMemberForModal.assignedCategories || []);
       setActive(editingMemberForModal.active !== false);
+      const isMemberAdmin = memberRole === 'ADMINISTRADOR' || editingMemberForModal.email === 'belchior87@gmail.com';
+      setCanEdit(isMemberAdmin ? true : (editingMemberForModal.canEdit ?? false));
     } else {
       setName('');
       setEmail('');
@@ -67,6 +74,7 @@ export const UserManagementModal: React.FC = () => {
       setAvatarColor(AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)]);
       setAssignedCategories([]);
       setActive(true);
+      setCanEdit(false);
     }
     setError(null);
   }, [editingMemberForModal, isUserManagementModalOpen]);
@@ -81,16 +89,23 @@ export const UserManagementModal: React.FC = () => {
     }
   };
 
+  const handleRoleChange = (newRole: UserRole) => {
+    setRole(newRole);
+    if (newRole === 'ADMINISTRADOR') {
+      setCanEdit(true);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError('Por favor, informe o nome do usuário.');
+      setError('Por favor, informe o nome da pessoa.');
       return;
     }
-    if (!email.trim()) {
-      setError('Por favor, informe o e-mail de contato.');
-      return;
-    }
+
+    const safeEmail = email.trim().toLowerCase() || `${name.toLowerCase().replace(/\s+/g, '.')}.${Date.now().toString().slice(-4)}@interno.app`;
+    const isMemberAdmin = role === 'ADMINISTRADOR' || safeEmail === 'belchior87@gmail.com';
+    const finalCanEdit = isMemberAdmin ? true : canEdit;
 
     setIsSaving(true);
     setError(null);
@@ -99,22 +114,24 @@ export const UserManagementModal: React.FC = () => {
       if (editingMemberForModal) {
         await updateMember(editingMemberForModal.id, {
           name: name.trim(),
-          email: email.trim().toLowerCase(),
+          email: safeEmail,
           phone: phone.trim(),
           role,
           avatarColor,
           assignedCategories,
           active,
+          canEdit: finalCanEdit,
         });
       } else {
         await addMember({
           name: name.trim(),
-          email: email.trim().toLowerCase(),
+          email: safeEmail,
           phone: phone.trim(),
           role,
           avatarColor,
           assignedCategories,
           active,
+          canEdit: finalCanEdit,
         });
       }
       setIsSaving(false);
@@ -208,16 +225,15 @@ export const UserManagementModal: React.FC = () => {
 
             <div>
               <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                E-mail (Login / Google) *
+                E-mail (Opcional para controle interno)
               </label>
               <div className="relative">
                 <Mail className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
                 <input
                   type="email"
-                  required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="carlos@salaodoreino.org"
+                  placeholder="carlos@exemplo.com (ou vazio)"
                   className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                 />
               </div>
@@ -244,23 +260,68 @@ export const UserManagementModal: React.FC = () => {
 
             <div>
               <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                Função / Cargo *
+                Função / Papel no Controle Interno *
               </label>
               <div className="relative">
                 <Shield className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
                 <select
                   value={role}
-                  onChange={(e) => setRole(e.target.value as UserRole)}
-                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 bg-white"
+                  onChange={(e) => handleRoleChange(e.target.value as UserRole)}
+                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 bg-white font-medium"
                 >
-                  <option value="ADMINISTRADOR">Administrador (Controle Geral)</option>
+                  <option value="SUPERVISOR">Supervisor (Supervisão de Serviços)</option>
+                  <option value="RESPONSÁVEL">Responsável (Gestão de Área)</option>
+                  <option value="EXECUTOR">Executor (Execução de Manutenção)</option>
+                  <option value="COLABORADOR">Colaborador (Apoio e Voluntário)</option>
                   <option value="COORDENADOR">Coordenador de Manutenção</option>
-                  <option value="SUPERVISOR">Supervisor de Serviços</option>
-                  <option value="RESPONSÁVEL">Responsável de Área / Executor</option>
-                  <option value="COLABORADOR">Colaborador / Voluntário</option>
+                  <option value="ADMINISTRADOR">Administrador (Acesso com Login)</option>
                 </select>
               </div>
             </div>
+          </div>
+
+          {/* Permissão de Edição de Dados do Sistema */}
+          <div className={`p-3.5 rounded-lg border transition ${canEdit || role === 'ADMINISTRADOR' ? 'bg-emerald-50/70 border-emerald-300' : 'bg-amber-50/70 border-amber-200'}`}>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-1.5">
+                  <Shield className={`w-4 h-4 ${canEdit || role === 'ADMINISTRADOR' ? 'text-emerald-700' : 'text-amber-700'}`} />
+                  <span className="text-xs font-bold text-gray-900">
+                    Permissão de Edição no Sistema
+                  </span>
+                  {role === 'ADMINISTRADOR' ? (
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 bg-blue-600 text-white rounded">
+                      Admin Total
+                    </span>
+                  ) : (
+                    <span className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded ${canEdit ? 'bg-emerald-600 text-white' : 'bg-amber-600 text-white'}`}>
+                      {canEdit ? 'Edição Liberada' : 'Somente Leitura'}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-gray-600 leading-snug">
+                  {role === 'ADMINISTRADOR'
+                    ? 'Administradores têm acesso total de edição e gestão no sistema.'
+                    : canEdit
+                    ? 'Este usuário conectado tem permissão do Administrador para criar, editar e excluir manutenções.'
+                    : 'Acesso Somente Leitura. O usuário visualiza o sistema mas não pode editar dados sem autorização do administrador.'}
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-3">
+                <input
+                  type="checkbox"
+                  checked={canEdit || role === 'ADMINISTRADOR'}
+                  disabled={role === 'ADMINISTRADOR'}
+                  onChange={(e) => setCanEdit(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-gray-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600 disabled:opacity-60"></div>
+              </label>
+            </div>
+          </div>
+
+          <div className="p-2.5 bg-blue-50/70 border border-blue-100 rounded-lg text-[11px] text-blue-900 leading-relaxed">
+            ℹ️ <strong>Controle Interno:</strong> Pessoas cadastradas como Supervisores, Responsáveis, Executores e Colaboradores ficam disponíveis para designação em todos os serviços sem necessidade de criar login.
           </div>
 
           {/* Avatar Color Picker */}
@@ -336,7 +397,7 @@ export const UserManagementModal: React.FC = () => {
 
           {/* Actions */}
           <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-            {editingMemberForModal ? (
+            {editingMemberForModal && firebaseUser && (isAdmin || canEditServices) ? (
               <button
                 type="button"
                 onClick={handleDeleteClick}

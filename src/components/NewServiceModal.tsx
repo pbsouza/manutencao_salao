@@ -63,8 +63,11 @@ export const NewServiceModal: React.FC = () => {
 
   // Responsibility, Execution & Supervision
   const [responsibleName, setResponsibleName] = useState('');
+  const [responsibleNames, setResponsibleNames] = useState<string[]>([]);
   const [executorName, setExecutorName] = useState('');
+  const [executorNames, setExecutorNames] = useState<string[]>([]);
   const [supervisorName, setSupervisorName] = useState('');
+  const [supervisorNames, setSupervisorNames] = useState<string[]>([]);
   const [team, setTeam] = useState('');
   const [identifiedDate, setIdentifiedDate] = useState('');
   const [forecastMonth, setForecastMonth] = useState('');
@@ -108,9 +111,8 @@ export const NewServiceModal: React.FC = () => {
       setDueDate(nextWeek);
       setSelectedCategory(initialCat);
       setLocation(locations[0]?.name || 'Auditório Principal');
-      setResponsibleName(currentUser.name || 'Encarregado de Manutenção');
-      setExecutorName(currentUser.name || 'Encarregado de Manutenção');
       setSupervisorName('');
+      setSupervisorNames([]);
       setTeam('Comissão de Manutenção');
       setTitle('');
       setSelectedProblem('');
@@ -126,13 +128,69 @@ export const NewServiceModal: React.FC = () => {
       const catObj = categories.find((c) => c.name === initialCat);
       if (catObj?.defaultResponsibleName && !isDummyPerson(catObj.defaultResponsibleName)) {
         setResponsibleName(catObj.defaultResponsibleName);
+        setResponsibleNames([catObj.defaultResponsibleName]);
         setExecutorName(catObj.defaultResponsibleName);
+        setExecutorNames([catObj.defaultResponsibleName]);
       } else {
-        setResponsibleName(currentUser?.name || 'Pedro Belchior');
-        setExecutorName(currentUser?.name || 'Pedro Belchior');
+        const defaultName = currentUser?.name || 'Pedro Belchior';
+        setResponsibleName(defaultName);
+        setResponsibleNames([defaultName]);
+        setExecutorName(defaultName);
+        setExecutorNames([defaultName]);
       }
     }
   }, [isNewServiceModalOpen, preselectedCategoryForNew, currentUser?.name]);
+
+  const addResponsibleChip = (name: string) => {
+    if (!name) return;
+    if (!responsibleNames.includes(name)) {
+      const updated = [...responsibleNames, name];
+      setResponsibleNames(updated);
+      setResponsibleName(updated.join(', '));
+      if (executorNames.length === 0) {
+        setExecutorNames(updated);
+        setExecutorName(updated.join(', '));
+      }
+    }
+  };
+
+  const removeResponsibleChip = (nameToRemove: string) => {
+    if (responsibleNames.length <= 1) return;
+    const updated = responsibleNames.filter((n) => n !== nameToRemove);
+    setResponsibleNames(updated);
+    setResponsibleName(updated.join(', '));
+  };
+
+  const addExecutorChip = (name: string) => {
+    if (!name) return;
+    if (!executorNames.includes(name)) {
+      const updated = [...executorNames, name];
+      setExecutorNames(updated);
+      setExecutorName(updated.join(', '));
+    }
+  };
+
+  const removeExecutorChip = (nameToRemove: string) => {
+    if (executorNames.length <= 1) return;
+    const updated = executorNames.filter((n) => n !== nameToRemove);
+    setExecutorNames(updated);
+    setExecutorName(updated.join(', '));
+  };
+
+  const addSupervisorChip = (name: string) => {
+    if (!name) return;
+    if (!supervisorNames.includes(name)) {
+      const updated = [...supervisorNames, name];
+      setSupervisorNames(updated);
+      setSupervisorName(updated.join(', '));
+    }
+  };
+
+  const removeSupervisorChip = (nameToRemove: string) => {
+    const updated = supervisorNames.filter((n) => n !== nameToRemove);
+    setSupervisorNames(updated);
+    setSupervisorName(updated.join(', '));
+  };
 
   // When category changes, filter problems and set default responsible
   const categoryProblems = problemTemplates.filter((p) => p.category === selectedCategory);
@@ -145,7 +203,9 @@ export const NewServiceModal: React.FC = () => {
     const catObj = categories.find((c) => c.name === newCat);
     if (catObj && catObj.defaultResponsibleName && !isDummyPerson(catObj.defaultResponsibleName)) {
       setResponsibleName(catObj.defaultResponsibleName);
+      setResponsibleNames([catObj.defaultResponsibleName]);
       setExecutorName(catObj.defaultResponsibleName);
+      setExecutorNames([catObj.defaultResponsibleName]);
     }
   };
 
@@ -179,7 +239,9 @@ export const NewServiceModal: React.FC = () => {
       setHighRiskWork(template.highRiskOption || (template.isHighRisk ? 'Sim' : 'Não'));
       if (template.defaultResponsible && !isDummyPerson(template.defaultResponsible)) {
         setResponsibleName(template.defaultResponsible);
+        setResponsibleNames([template.defaultResponsible]);
         setExecutorName(template.defaultResponsible);
+        setExecutorNames([template.defaultResponsible]);
       }
     }
   };
@@ -263,8 +325,38 @@ export const NewServiceModal: React.FC = () => {
       return;
     }
 
-    const matchedResponsible = members.find((m) => m.name === responsibleName);
-    const matchedSupervisor = members.find((m) => m.name === supervisorName);
+    const finalResponsibleNames =
+      responsibleNames.length > 0
+        ? responsibleNames
+        : responsibleName
+        ? [responsibleName]
+        : [currentUser.name];
+
+    const finalResponsibleIds = finalResponsibleNames.map(
+      (rn) => members.find((m) => m.name === rn)?.id || currentUser.id
+    );
+
+    const finalExecutorNames =
+      executorNames.length > 0
+        ? executorNames
+        : executorName
+        ? [executorName]
+        : finalResponsibleNames;
+
+    const finalExecutorIds = finalExecutorNames.map(
+      (en) => members.find((m) => m.name === en)?.id || ''
+    ).filter(Boolean);
+
+    const finalSupervisorNames =
+      supervisorNames.length > 0
+        ? supervisorNames
+        : supervisorName
+        ? [supervisorName]
+        : [];
+
+    const finalSupervisorIds = finalSupervisorNames.map(
+      (sn) => members.find((m) => m.name === sn)?.id || ''
+    ).filter(Boolean);
 
     await addService({
       title: title.trim(),
@@ -274,13 +366,17 @@ export const NewServiceModal: React.FC = () => {
       location: location || (locations[0]?.name ?? 'Auditório Principal'),
       recommendedSolution: recommendedSolution.trim(),
       risk,
-      responsibleId: matchedResponsible ? matchedResponsible.id : currentUser.id,
-      responsibleName: responsibleName || currentUser.name,
-      executorName: executorName || responsibleName || currentUser.name,
-      supervisorId: matchedSupervisor?.id || '',
-      supervisorName: supervisorName || '',
-      supervisorIds: matchedSupervisor ? [matchedSupervisor.id] : [],
-      supervisorNames: supervisorName ? [supervisorName] : [],
+      responsibleId: finalResponsibleIds[0] || currentUser.id,
+      responsibleName: finalResponsibleNames.join(', '),
+      responsibleIds: finalResponsibleIds,
+      responsibleNames: finalResponsibleNames,
+      executorName: finalExecutorNames.join(', '),
+      executorIds: finalExecutorIds,
+      executorNames: finalExecutorNames,
+      supervisorId: finalSupervisorIds[0] || '',
+      supervisorName: finalSupervisorNames.join(', '),
+      supervisorIds: finalSupervisorIds,
+      supervisorNames: finalSupervisorNames,
       team,
       identifiedDate,
       forecastMonth,
@@ -589,106 +685,172 @@ export const NewServiceModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Step 9, 10 & 11: Responsável, Executor e Supervisor Designado */}
+          {/* Step 9, 10 & 11: Responsáveis, Executores e Supervisores Designados */}
           <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200 space-y-3">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 uppercase tracking-wider">
-              <UserCheck className="w-4 h-4 text-blue-600" />
-              <span>9. Responsabilidade, Execução e Supervisão</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                <UserCheck className="w-4 h-4 text-blue-600" />
+                <span>9. Responsabilidade, Execução e Supervisão</span>
+              </div>
+              <span className="text-[11px] text-slate-500 font-medium">
+                Você pode adicionar mais de um responsável ou executor
+              </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Responsável Geral */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
-                  <User className="w-3.5 h-3.5 text-slate-400" />
-                  Responsável da Área
+              {/* Responsáveis Gerais */}
+              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                <label className="block text-xs font-bold text-slate-700 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <User className="w-3.5 h-3.5 text-slate-500" />
+                    Responsáveis da Área ({responsibleNames.length})
+                  </span>
                 </label>
-                {members.length > 0 ? (
+
+                {/* Selected chips */}
+                <div className="flex flex-wrap gap-1 min-h-[32px] items-center p-1.5 bg-slate-50 rounded-md border border-slate-200">
+                  {responsibleNames.map((rn) => (
+                    <span
+                      key={rn}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 border border-blue-200 rounded-md text-xs font-medium"
+                    >
+                      {rn}
+                      {responsibleNames.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeResponsibleChip(rn)}
+                          className="text-blue-600 hover:text-red-600 cursor-pointer"
+                          title="Remover este responsável"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+
+                {members.length > 0 && (
                   <select
-                    value={responsibleName}
+                    value=""
                     onChange={(e) => {
-                      setResponsibleName(e.target.value);
-                      if (!executorName) setExecutorName(e.target.value);
+                      if (e.target.value) addResponsibleChip(e.target.value);
                     }}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs focus:ring-1 focus:ring-blue-500"
                   >
-                    {members.map((m) => (
-                      <option key={m.id} value={m.name}>
-                        {m.name} ({m.role})
-                      </option>
-                    ))}
+                    <option value="">+ Adicionar Responsável...</option>
+                    {members
+                      .filter((m) => !responsibleNames.includes(m.name))
+                      .map((m) => (
+                        <option key={m.id} value={m.name}>
+                          {m.name} ({m.role})
+                        </option>
+                      ))}
                   </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={responsibleName}
-                    onChange={(e) => setResponsibleName(e.target.value)}
-                    placeholder="Nome do responsável..."
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm"
-                  />
                 )}
               </div>
 
-              {/* Executor / Líder do Trabalho */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
-                  <User className="w-3.5 h-3.5 text-blue-500" />
-                  Executor Designado (Executa)
+              {/* Executores Designados */}
+              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs space-y-2">
+                <label className="block text-xs font-bold text-slate-700 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <User className="w-3.5 h-3.5 text-blue-600" />
+                    Executores Designados ({executorNames.length})
+                  </span>
                 </label>
-                {members.length > 0 ? (
+
+                {/* Selected chips */}
+                <div className="flex flex-wrap gap-1 min-h-[32px] items-center p-1.5 bg-slate-50 rounded-md border border-slate-200">
+                  {executorNames.map((en) => (
+                    <span
+                      key={en}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-md text-xs font-medium"
+                    >
+                      {en}
+                      {executorNames.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeExecutorChip(en)}
+                          className="text-emerald-700 hover:text-red-600 cursor-pointer"
+                          title="Remover este executor"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+
+                {members.length > 0 && (
                   <select
-                    value={executorName}
-                    onChange={(e) => setExecutorName(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 font-medium"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) addExecutorChip(e.target.value);
+                    }}
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs focus:ring-1 focus:ring-emerald-500"
                   >
-                    {members.map((m) => (
-                      <option key={m.id} value={m.name}>
-                        {m.name} ({m.role})
-                      </option>
-                    ))}
+                    <option value="">+ Adicionar Executor...</option>
+                    {members
+                      .filter((m) => !executorNames.includes(m.name))
+                      .map((m) => (
+                        <option key={m.id} value={m.name}>
+                          {m.name} ({m.role})
+                        </option>
+                      ))}
                   </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={executorName}
-                    onChange={(e) => setExecutorName(e.target.value)}
-                    placeholder="Nome do executor..."
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm"
-                  />
                 )}
               </div>
 
-              {/* Supervisor Designado */}
-              <div className="bg-indigo-50/50 p-2 rounded-lg border border-indigo-100">
-                <label className="block text-xs font-bold text-indigo-900 mb-1 flex items-center gap-1">
-                  <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
-                  Supervisor Designado
+              {/* Supervisores Designados */}
+              <div className="bg-indigo-50/70 p-3 rounded-lg border border-indigo-200 shadow-2xs space-y-2">
+                <label className="block text-xs font-bold text-indigo-900 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
+                    Supervisores ({supervisorNames.length})
+                  </span>
                 </label>
-                {members.length > 0 ? (
+
+                {/* Selected chips */}
+                <div className="flex flex-wrap gap-1 min-h-[32px] items-center p-1.5 bg-white rounded-md border border-indigo-100">
+                  {supervisorNames.length === 0 ? (
+                    <span className="text-[11px] text-slate-400 italic">Nenhum supervisor designado</span>
+                  ) : (
+                    supervisorNames.map((sn) => (
+                      <span
+                        key={sn}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-900 border border-indigo-200 rounded-md text-xs font-medium"
+                      >
+                        {sn}
+                        <button
+                          type="button"
+                          onClick={() => removeSupervisorChip(sn)}
+                          className="text-indigo-700 hover:text-red-600 cursor-pointer"
+                          title="Remover este supervisor"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))
+                  )}
+                </div>
+
+                {members.length > 0 && (
                   <select
-                    value={supervisorName}
-                    onChange={(e) => setSupervisorName(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-semibold text-indigo-950 focus:ring-2 focus:ring-indigo-500"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) addSupervisorChip(e.target.value);
+                    }}
+                    className="w-full px-2.5 py-1.5 bg-white border border-indigo-200 rounded-md text-xs focus:ring-1 focus:ring-indigo-500 font-semibold text-indigo-950"
                   >
-                    <option value="">-- Selecione o Supervisor --</option>
-                    {members.map((m) => (
-                      <option key={m.id} value={m.name}>
-                        {m.name} ({m.role})
-                      </option>
-                    ))}
+                    <option value="">+ Designar Supervisor...</option>
+                    {members
+                      .filter((m) => !supervisorNames.includes(m.name))
+                      .map((m) => (
+                        <option key={m.id} value={m.name}>
+                          {m.name} ({m.role})
+                        </option>
+                      ))}
                   </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={supervisorName}
-                    onChange={(e) => setSupervisorName(e.target.value)}
-                    placeholder="Nome do supervisor..."
-                    className="w-full px-3 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-semibold"
-                  />
                 )}
-                <span className="text-[10px] text-indigo-600 block mt-1">
-                  Este supervisor terá acesso e supervisão direta desta atividade.
-                </span>
               </div>
             </div>
           </div>

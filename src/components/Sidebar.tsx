@@ -285,12 +285,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
             <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">
               Perfil Ativo
             </span>
-            <button
-              onClick={() => setIsAuthModalOpen(true)}
-              className="text-[10px] text-blue-400 hover:text-blue-300 font-bold cursor-pointer"
-            >
-              {firebaseUser ? 'Trocar Conta' : 'Fazer Login'}
-            </button>
+            {firebaseUser ? (
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="text-[10px] text-blue-400 hover:text-blue-300 font-bold cursor-pointer"
+              >
+                Conectado
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="text-[10px] text-gray-600 hover:text-gray-400 font-medium cursor-pointer"
+                title="Acesso"
+              >
+                •
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

@@ -28,6 +28,11 @@ export const ResponsiblesView: React.FC = () => {
     members,
     services,
     currentUser,
+    firebaseUser,
+    isAdmin,
+    canEditServices,
+    toggleMemberEditPermission,
+    setIsAuthModalOpen,
     switchUser,
     deleteMember,
     setActiveTab,
@@ -73,7 +78,7 @@ export const ResponsiblesView: React.FC = () => {
   };
 
   return (
-    <div id="responsibles-view-container" className="p-3 sm:p-4 lg:p-6 space-y-4 max-w-7xl mx-auto">
+    <div id="responsibles-view-container" className="p-3 sm:p-4 lg:p-6 space-y-4 max-w-7xl mx-auto pb-32 sm:pb-24 md:pb-12">
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-2xs">
         <div>
@@ -81,16 +86,22 @@ export const ResponsiblesView: React.FC = () => {
             Equipe e Usuários Cadastrados
           </h2>
           <p className="text-[11px] text-gray-500">
-            Gerencie os voluntários, coordenadores, supervisores e executores designados para o Salão do Reino
+            Gerencie os voluntários, coordenadores, supervisores e executores designados para a manutenção do Salão do Reino
           </p>
         </div>
 
         <button
-          onClick={() => openUserManagementModal()}
+          onClick={() => {
+            if (!firebaseUser) {
+              setIsAuthModalOpen(true);
+              return;
+            }
+            openUserManagementModal();
+          }}
           className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-2xs transition cursor-pointer self-start sm:self-auto"
         >
           <UserPlus className="w-4 h-4" />
-          <span>Cadastrar Novo Usuário</span>
+          <span>Cadastrar Nova Pessoa</span>
         </button>
       </div>
 
@@ -111,14 +122,15 @@ export const ResponsiblesView: React.FC = () => {
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="py-1.5 px-3 text-xs rounded-lg border border-gray-300 bg-gray-50 focus:bg-white"
+            className="py-1.5 px-3 text-xs rounded-lg border border-gray-300 bg-gray-50 focus:bg-white font-medium"
           >
             <option value="ALL">Todas as Funções ({members.length})</option>
-            <option value="ADMINISTRADOR">Administradores</option>
-            <option value="COORDENADOR">Coordenadores</option>
             <option value="SUPERVISOR">Supervisores</option>
-            <option value="RESPONSÁVEL">Responsáveis / Executores</option>
+            <option value="RESPONSÁVEL">Responsáveis de Área</option>
+            <option value="EXECUTOR">Executores de Manutenção</option>
             <option value="COLABORADOR">Colaboradores</option>
+            <option value="COORDENADOR">Coordenadores</option>
+            <option value="ADMINISTRADOR">Administradores</option>
           </select>
         </div>
 
@@ -131,13 +143,16 @@ export const ResponsiblesView: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {filteredMembers.map((member) => {
           const isCurrentActive = currentUser.id === member.id || currentUser.email === member.email;
+          const isMemberAdmin = member.role === 'ADMINISTRADOR' || member.email === 'belchior87@gmail.com';
           const mName = member.name.toLowerCase().trim();
 
-          // Executing tasks
+          // Executing tasks (supports multi-responsible and multi-executor)
           const executingServices = services.filter((s) => {
             const r = (s.responsibleName || '').toLowerCase().trim();
+            const rs = (s.responsibleNames || []).map((n) => n.toLowerCase().trim());
             const e = (s.executorName || '').toLowerCase().trim();
-            return r === mName || e === mName;
+            const es = (s.executorNames || []).map((n) => n.toLowerCase().trim());
+            return r === mName || rs.includes(mName) || e === mName || es.includes(mName);
           });
 
           // Supervising tasks
@@ -186,29 +201,73 @@ export const ResponsiblesView: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 bg-blue-50 text-blue-700 rounded border border-blue-200 inline-block mt-0.5">
-                        {member.role}
-                      </span>
+                      <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 bg-blue-50 text-blue-700 rounded border border-blue-200 inline-block">
+                          {member.role}
+                        </span>
+                        {isMemberAdmin ? (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 bg-purple-50 text-purple-700 rounded border border-purple-200 inline-flex items-center gap-0.5">
+                            <Shield className="w-2.5 h-2.5 text-purple-600" /> Admin
+                          </span>
+                        ) : member.canEdit ? (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 inline-flex items-center gap-0.5">
+                            <Check className="w-2.5 h-2.5 text-emerald-600" /> Edição OK
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-medium px-1.5 py-0.2 bg-gray-100 text-gray-600 rounded border border-gray-200 inline-flex items-center gap-0.5">
+                            Leitura
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => openUserManagementModal(member)}
+                      onClick={() => {
+                        if (!firebaseUser) {
+                          setIsAuthModalOpen(true);
+                          return;
+                        }
+                        openUserManagementModal(member);
+                      }}
                       className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
-                      title="Editar perfil e permissões do usuário"
+                      title="Editar perfil e dados no controle interno"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
-                    <button
-                      onClick={() => setMemberToDelete(member)}
-                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
-                      title="Excluir este usuário"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {firebaseUser && (isAdmin || canEditServices) && (
+                      <button
+                        onClick={() => setMemberToDelete(member)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                        title="Excluir este usuário"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
+
+                {/* Admin Quick Permission Toggle */}
+                {isAdmin && !isMemberAdmin && (
+                  <div className="mb-2 p-1.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between gap-2 text-[11px]">
+                    <div className="flex items-center gap-1 truncate text-slate-700">
+                      <Shield className={`w-3 h-3 ${member.canEdit ? 'text-emerald-600' : 'text-amber-600'}`} />
+                      <span className="truncate">{member.canEdit ? 'Pode Editar' : 'Somente Leitura'}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleMemberEditPermission(member.id, !member.canEdit)}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition shrink-0 border ${
+                        member.canEdit
+                          ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                          : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                      }`}
+                    >
+                      {member.canEdit ? 'Tornar Leitura' : 'Conceder Edição'}
+                    </button>
+                  </div>
+                )}
 
                 {/* Contact info */}
                 <div className="space-y-1 text-[11px] text-gray-500 mb-3 bg-gray-50 p-2 rounded-lg border border-gray-100">

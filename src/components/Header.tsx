@@ -237,7 +237,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={() => setIsAuthModalOpen(true)}
           className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-700 transition cursor-pointer"
-          title="Fazer login com Google ou E-mail / Cadastrar usuário"
+          title="Perfil de Usuário"
         >
           <div
             className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] text-white font-bold shrink-0"

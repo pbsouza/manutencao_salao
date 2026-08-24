@@ -13,7 +13,6 @@ import {
   MapPin,
   Mic,
   Plus,
-  Trash2,
   Trees,
   Users,
   Wrench,
