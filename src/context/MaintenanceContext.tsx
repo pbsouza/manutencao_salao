@@ -163,6 +163,7 @@ interface MaintenanceContextType {
 
   // Members
   addMember: (member: Omit<UserMember, 'id'>) => Promise<void>;
+  addMembersBatch: (membersList: Omit<UserMember, 'id'>[]) => Promise<number>;
   updateMember: (id: string, updates: Partial<UserMember>) => Promise<void>;
   deleteMember: (id: string) => Promise<void>;
 
@@ -423,10 +424,15 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
           }
         }
 
-        // Deduplicate members by email (preferring ADMINISTRADOR or the most recently updated)
+        // Keep all members, deduping only if real authenticated accounts share the exact same email
         const memberMap = new Map<string, UserMember>();
         for (const m of rawMembers) {
-          const key = (m.email || m.id).toLowerCase().trim();
+          const isRealAuthEmail =
+            m.email &&
+            !m.email.includes('@interno.app') &&
+            m.email.includes('@') &&
+            !m.email.endsWith('@salao.org');
+          const key = isRealAuthEmail ? `email:${m.email.toLowerCase().trim()}` : `id:${m.id}`;
           const existing = memberMap.get(key);
           if (!existing) {
             memberMap.set(key, m);
@@ -1339,13 +1345,41 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Members Actions
   const addMember = async (mbr: Omit<UserMember, 'id'>) => {
-    const newId = `user-${Date.now()}`;
+    const uniqueSuffix = Math.random().toString(36).substring(2, 8);
+    const newId = `user-${Date.now()}-${uniqueSuffix}`;
     const newMbr: UserMember = {
       ...mbr,
       id: newId,
     };
     setMembers((prev) => [...prev, newMbr]);
     await setDoc(doc(db, 'members', newId), cleanFirestoreData(newMbr));
+  };
+
+  const addMembersBatch = async (membersList: Omit<UserMember, 'id'>[]): Promise<number> => {
+    if (!membersList || membersList.length === 0) return 0;
+    const now = Date.now();
+    const newMembersToInsert: UserMember[] = membersList.map((mbr, index) => {
+      const uniqueSuffix = Math.random().toString(36).substring(2, 8);
+      const newId = `user-${now + index}-${uniqueSuffix}`;
+      return {
+        ...mbr,
+        id: newId,
+      };
+    });
+
+    // Optimistic UI state update
+    setMembers((prev) => [...prev, ...newMembersToInsert]);
+
+    // Save to Firestore in chunks of parallel writes to prevent throttling
+    const CHUNK_SIZE = 25;
+    for (let i = 0; i < newMembersToInsert.length; i += CHUNK_SIZE) {
+      const chunk = newMembersToInsert.slice(i, i + CHUNK_SIZE);
+      await Promise.all(
+        chunk.map((item) => setDoc(doc(db, 'members', item.id), cleanFirestoreData(item)))
+      );
+    }
+
+    return newMembersToInsert.length;
   };
 
   const updateMember = async (id: string, updates: Partial<UserMember>) => {
@@ -1681,6 +1715,7 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         deleteLocation,
 
         addMember,
+        addMembersBatch,
         updateMember,
         deleteMember,
 

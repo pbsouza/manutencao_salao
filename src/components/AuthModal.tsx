@@ -8,9 +8,7 @@ import {
   Mail,
   Phone,
   Shield,
-  Sparkles,
   User,
-  UserCheck,
   UserPlus,
   X,
 } from 'lucide-react';
@@ -27,8 +25,6 @@ export const AuthModal: React.FC = () => {
     loginWithEmail,
     registerWithEmail,
     logout,
-    members,
-    setCurrentUser,
     openUserManagementModal,
   } = useMaintenance();
 
@@ -94,12 +90,6 @@ export const AuthModal: React.FC = () => {
         setErrorMsg(result.error || 'Erro ao cadastrar usuário.');
       }
     }
-  };
-
-  const handleQuickSwitch = (member: typeof currentUser) => {
-    setCurrentUser(member);
-    setSuccessMsg(`Perfil alterado para: ${member.name}`);
-    setTimeout(() => setIsAuthModalOpen(false), 600);
   };
 
   return (
@@ -347,9 +337,10 @@ export const AuthModal: React.FC = () => {
           </form>
 
           {/* Toggle Login / Register */}
-          <div className="text-center pt-1">
+          <div className="text-center pt-2">
             {mode === 'login' ? (
               <button
+                type="button"
                 onClick={() => {
                   setMode('register');
                   setErrorMsg(null);
@@ -360,6 +351,7 @@ export const AuthModal: React.FC = () => {
               </button>
             ) : (
               <button
+                type="button"
                 onClick={() => {
                   setMode('login');
                   setErrorMsg(null);
@@ -369,34 +361,6 @@ export const AuthModal: React.FC = () => {
                 Já possui conta? Fazer login
               </button>
             )}
-          </div>
-
-          {/* Quick Select Profile (Para testes ou troca rápida) */}
-          <div className="pt-3 border-t border-gray-100">
-            <span className="text-[10px] font-bold text-gray-500 block mb-1.5 uppercase">
-              Ou selecione um usuário já cadastrado:
-            </span>
-            <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-              {members.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => handleQuickSwitch(m)}
-                  className={`text-[11px] px-2 py-1 rounded border flex items-center gap-1.5 cursor-pointer transition ${
-                    currentUser.id === m.id
-                      ? 'bg-blue-100 border-blue-400 text-blue-900 font-bold'
-                      : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: m.avatarColor || '#2563eb' }}
-                  />
-                  <span>{m.name}</span>
-                  <span className="text-[9px] text-gray-400">({m.role})</span>
-                </button>
-              ))}
-            </div>
           </div>
         </div>
       </div>

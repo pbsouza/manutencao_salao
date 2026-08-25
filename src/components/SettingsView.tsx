@@ -57,6 +57,15 @@ export const SettingsView: React.FC = () => {
   const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
   const [seedSuccess, setSeedSuccess] = useState<string | null>(null);
+  const [userSearch, setUserSearch] = useState('');
+
+  const sortedMembers = [...members].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  const filteredMembers = sortedMembers.filter(
+    (m) =>
+      !userSearch ||
+      m.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+      (m.role || '').toLowerCase().includes(userSearch.toLowerCase())
+  );
 
   const handleUserSwitch = (userId: string) => {
     const found = members.find((m) => m.id === userId);
@@ -259,27 +268,41 @@ export const SettingsView: React.FC = () => {
 
       {/* User Switcher Section */}
       <div className="bg-white border border-gray-200 p-4 rounded-lg space-y-3 shadow-2xs">
-        <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-gray-100 gap-2">
           <div className="flex items-center gap-1.5 text-xs font-bold text-blue-700 uppercase tracking-tight">
             <User className="w-3.5 h-3.5" />
-            <span>Perfil Operacional Ativo ({members.length} membros cadastrados)</span>
+            <span>Perfil Operacional Ativo ({members.length} no banco de dados)</span>
           </div>
 
-          <button
-            onClick={() => openUserManagementModal()}
-            className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>+ Cadastrar Membro</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => openUserManagementModal()}
+              className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-2.5 py-1 rounded-md font-bold flex items-center gap-1 cursor-pointer transition"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>+ Cadastrar (Individual / Lote)</span>
+            </button>
+          </div>
         </div>
 
         <p className="text-[11px] text-gray-600">
-          Selecione qual irmão está operando o sistema para visualizar "Minhas Tarefas", gerenciar seus serviços sob supervisão e assinar auditorias de segurança:
+          Selecione qual irmão está operando o sistema para visualizar "Minhas Tarefas", gerenciar serviços sob supervisão e assinar auditorias:
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
-          {members.map((m) => {
+        {members.length > 9 && (
+          <div>
+            <input
+              type="text"
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              placeholder="Buscar entre os usuários cadastrados..."
+              className="w-full text-xs px-3 py-1.5 rounded-lg border border-gray-300 bg-gray-50 focus:bg-white focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1 max-h-72 overflow-y-auto pr-1">
+          {filteredMembers.slice(0, 60).map((m) => {
             const isCurrent = m.id === currentUser.id;
             return (
               <div
@@ -291,21 +314,21 @@ export const SettingsView: React.FC = () => {
                     : 'bg-gray-50 border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-white text-[11px] shadow-2xs"
+                    className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-white text-[11px] shadow-2xs shrink-0"
                     style={{ backgroundColor: m.avatarColor || '#2563eb' }}
                   >
                     {m.name.charAt(0)}
                   </div>
-                  <div>
-                    <span className="text-xs font-bold text-gray-900 block leading-tight">{m.name}</span>
-                    <span className="text-[10px] text-gray-500">{m.role}</span>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-gray-900 block leading-tight truncate">{m.name}</span>
+                    <span className="text-[10px] text-gray-500 truncate">{m.role}</span>
                   </div>
                 </div>
 
                 {isCurrent && (
-                  <span className="text-[9px] font-bold text-blue-800 bg-blue-100 px-1.5 py-0.2 rounded border border-blue-200">
+                  <span className="text-[9px] font-bold text-blue-800 bg-blue-100 px-1.5 py-0.2 rounded border border-blue-200 shrink-0">
                     Ativo
                   </span>
                 )}
@@ -313,6 +336,12 @@ export const SettingsView: React.FC = () => {
             );
           })}
         </div>
+
+        {filteredMembers.length > 60 && (
+          <p className="text-[10px] text-gray-500 text-center italic">
+            Mostrando 60 de {filteredMembers.length} pessoas. Digite na busca acima para filtrar mais especificamente.
+          </p>
+        )}
       </div>
 
       {/* Database Management & Excel Sync */}

@@ -47,8 +47,13 @@ export const FilterBar: React.FC = () => {
     filterState.onlyNeedsTM ||
     filterState.onlyHighRisk;
 
+  // Sorted members list
+  const sortedMembers = [...members].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
   // Filter members list for supervisor options
-  const supervisorsList = members.filter((m) => m.role === 'SUPERVISOR' || m.role === 'COORDENADOR' || m.role === 'ADMINISTRADOR');
+  const supervisorsList = sortedMembers.filter(
+    (m) => m.role === 'SUPERVISOR' || m.role === 'COORDENADOR' || m.role === 'ADMINISTRADOR'
+  );
 
   return (
     <div
@@ -104,7 +109,7 @@ export const FilterBar: React.FC = () => {
               className="w-full bg-gray-100 text-gray-800 text-xs rounded px-2 py-1.5 border border-gray-200 focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none"
             >
               <option value="">Todos</option>
-              {members.map((m) => (
+              {sortedMembers.map((m) => (
                 <option key={m.id} value={m.name}>
                   {m.name}
                 </option>

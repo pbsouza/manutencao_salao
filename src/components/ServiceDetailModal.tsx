@@ -141,6 +141,9 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
 
   const overdue = isOverdue(dueDate, status);
 
+  // Sorted members list for fast selection
+  const sortedMembers = [...members].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
   // Dynamic calculations
   const classification = getSpreadsheetClassification(risk);
   const monthBudget = getBudgetForMonth(forecastMonth);
@@ -705,7 +708,7 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
                       className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs focus:ring-1 focus:ring-blue-500"
                     >
                       <option value="">+ Adicionar Responsável...</option>
-                      {members
+                      {sortedMembers
                         .filter((m) => !responsibleNames.includes(m.name))
                         .map((m) => (
                           <option key={m.id} value={m.name}>
@@ -756,7 +759,7 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
                       className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs focus:ring-1 focus:ring-emerald-500"
                     >
                       <option value="">+ Adicionar Executor...</option>
-                      {members
+                      {sortedMembers
                         .filter((m) => !executorNames.includes(m.name))
                         .map((m) => (
                           <option key={m.id} value={m.name}>
@@ -811,7 +814,7 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
                       className="w-full px-2.5 py-1.5 bg-white border border-indigo-200 rounded-md text-xs focus:ring-1 focus:ring-indigo-500 font-semibold text-indigo-950"
                     >
                       <option value="">+ Designar Supervisor...</option>
-                      {members
+                      {sortedMembers
                         .filter((m) => !supervisorNames.includes(m.name))
                         .map((m) => (
                           <option key={m.id} value={m.name}>

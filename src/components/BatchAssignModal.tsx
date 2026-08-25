@@ -40,6 +40,8 @@ export const BatchAssignModal: React.FC = () => {
     }
   }, [batchAssignTargetIds, isBatchAssignModalOpen]);
 
+  const sortedMembers = [...members].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
   if (!isBatchAssignModalOpen) return null;
 
   const toggleSelectService = (id: string) => {
@@ -138,10 +140,10 @@ export const BatchAssignModal: React.FC = () => {
                   <select
                     value={executorName}
                     onChange={(e) => setExecutorName(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 bg-white"
+                    className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 bg-white font-medium"
                   >
                     <option value="">Manter executor atual</option>
-                    {members.map((m) => (
+                    {sortedMembers.map((m) => (
                       <option key={m.id} value={m.name}>
                         {m.name} ({m.role})
                       </option>
@@ -160,10 +162,10 @@ export const BatchAssignModal: React.FC = () => {
                   <select
                     value={supervisorName}
                     onChange={(e) => setSupervisorName(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 bg-white"
+                    className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 bg-white font-medium"
                   >
                     <option value="">Manter supervisor atual</option>
-                    {members.map((m) => (
+                    {sortedMembers.map((m) => (
                       <option key={m.id} value={m.name}>
                         {m.name} ({m.role})
                       </option>
