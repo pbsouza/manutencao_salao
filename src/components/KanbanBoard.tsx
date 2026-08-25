@@ -13,6 +13,7 @@ import {
   Layers,
   LayoutGrid,
   List,
+  LogIn,
   PauseCircle,
   Plus,
   SlidersHorizontal,
@@ -506,34 +507,48 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               </h3>
             </div>
             <p className="text-[11px] sm:text-xs text-gray-600">
-              Você pode cadastrar o primeiro problema manualmente, selecionar problemas pré-fixados da base oficial ou restaurar um backup JSON.
+              {firebaseUser
+                ? 'Você pode cadastrar o primeiro problema manualmente, selecionar problemas pré-fixados da base oficial ou restaurar um backup JSON.'
+                : 'Nenhum serviço ou manutenção cadastrado no momento.'}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <button
-              onClick={() => openNewServiceModal()}
-              className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition shadow-2xs cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Registrar Primeiro Problema</span>
-            </button>
+            {firebaseUser ? (
+              <>
+                <button
+                  onClick={() => openNewServiceModal()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition shadow-2xs cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Registrar Primeiro Problema</span>
+                </button>
 
-            <button
-              onClick={() => openProblemTemplatesModal()}
-              className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-lg transition cursor-pointer"
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>Base Pré-fixada</span>
-            </button>
+                <button
+                  onClick={() => openProblemTemplatesModal()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-lg transition cursor-pointer"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Base Pré-fixada</span>
+                </button>
 
-            <label
-              htmlFor="kanban-json-restore-input"
-              className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 text-xs font-bold rounded-lg transition cursor-pointer"
-            >
-              <Upload className="w-4 h-4" />
-              <span>Restaurar JSON</span>
-            </label>
+                <label
+                  htmlFor="kanban-json-restore-input"
+                  className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 text-xs font-bold rounded-lg transition cursor-pointer"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>Restaurar JSON</span>
+                </label>
+              </>
+            ) : (
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition shadow-2xs cursor-pointer"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Entrar para Registrar</span>
+              </button>
+            )}
           </div>
         </div>
       )}

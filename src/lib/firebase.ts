@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import {
+  initializeFirestore,
   getFirestore,
   collection,
   doc,
@@ -29,10 +30,23 @@ import config from '../../firebase-applet-config.json';
 
 const app = getApps().length === 0 ? initializeApp(config) : getApps()[0];
 
-// Use custom firestoreDatabaseId if provided in config
-export const db = config.firestoreDatabaseId
-  ? getFirestore(app, config.firestoreDatabaseId)
-  : getFirestore(app);
+// Initialize Firestore with robust long-polling connection settings to prevent iframe/proxy disconnects
+let firestoreInstance;
+try {
+  firestoreInstance = initializeFirestore(
+    app,
+    {
+      experimentalForceLongPolling: true,
+    },
+    config.firestoreDatabaseId || undefined
+  );
+} catch {
+  firestoreInstance = config.firestoreDatabaseId
+    ? getFirestore(app, config.firestoreDatabaseId)
+    : getFirestore(app);
+}
+
+export const db = firestoreInstance;
 
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();

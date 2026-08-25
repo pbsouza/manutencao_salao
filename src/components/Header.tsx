@@ -179,28 +179,32 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Problemas Pré-fixados Button */}
-        <button
-          onClick={openProblemTemplatesModal}
-          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition cursor-pointer"
-          title="Ver problemas e soluções técnicas pré-fixadas"
-        >
-          <BookOpen className="w-3.5 h-3.5" />
-          <span className="hidden lg:inline">Base Pré-fixada</span>
-          <span className="px-1.5 py-0.2 rounded bg-blue-200 text-blue-800 text-[10px]">
-            {problemTemplates.length}
-          </span>
-        </button>
+        {/* Problemas Pré-fixados Button (Autenticado) */}
+        {firebaseUser && (
+          <button
+            onClick={openProblemTemplatesModal}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition cursor-pointer"
+            title="Ver problemas e soluções técnicas pré-fixadas"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">Base Pré-fixada</span>
+            <span className="px-1.5 py-0.2 rounded bg-blue-200 text-blue-800 text-[10px]">
+              {problemTemplates.length}
+            </span>
+          </button>
+        )}
 
-        {/* Designação em Massa */}
-        <button
-          onClick={() => openBatchAssignModal()}
-          className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition cursor-pointer"
-          title="Designar múltiplos problemas para executores ou supervisores"
-        >
-          <UserCheck className="w-3.5 h-3.5" />
-          <span className="hidden lg:inline">Designar em Massa</span>
-        </button>
+        {/* Designação em Massa (Autenticado) */}
+        {firebaseUser && (
+          <button
+            onClick={() => openBatchAssignModal()}
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition cursor-pointer"
+            title="Designar múltiplos problemas para executores ou supervisores"
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">Designar em Massa</span>
+          </button>
+        )}
 
         {/* Filter Toggle Button */}
         {(activeTab === 'kanban' || activeTab === 'mytasks') && (
@@ -234,26 +238,43 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Auth / Login Status Button */}
-        <button
-          onClick={() => setIsAuthModalOpen(true)}
-          className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-700 transition cursor-pointer"
-          title="Perfil de Usuário"
-        >
-          <div
-            className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] text-white font-bold shrink-0"
-            style={{ backgroundColor: currentUser.avatarColor || '#2563eb' }}
+        {firebaseUser ? (
+          <button
+            onClick={() => setIsAuthModalOpen(true)}
+            className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-700 transition cursor-pointer"
+            title="Perfil de Usuário Conectado"
           >
-            {currentUser.name.charAt(0)}
-          </div>
-          <span className="hidden xs:inline max-w-[70px] sm:max-w-[100px] truncate text-[11px] sm:text-xs">
-            {firebaseUser ? (firebaseUser.displayName || currentUser.name.split(' ')[0]) : currentUser.name.split(' ')[0]}
-          </span>
-        </button>
+            <div
+              className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] text-white font-bold shrink-0"
+              style={{ backgroundColor: currentUser.avatarColor || '#2563eb' }}
+            >
+              {currentUser.name.charAt(0)}
+            </div>
+            <span className="hidden xs:inline max-w-[70px] sm:max-w-[100px] truncate text-[11px] sm:text-xs">
+              {firebaseUser.displayName || currentUser.name.split(' ')[0]}
+            </span>
+          </button>
+        ) : (
+          <button
+            onClick={() => setIsAuthModalOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition cursor-pointer"
+            title="Entrar no Sistema"
+          >
+            <LogIn className="w-3.5 h-3.5" />
+            <span className="inline">Entrar</span>
+          </button>
+        )}
 
         {/* Primary "+ NOVO PROBLEMA" Button */}
         <button
           id="btn-header-new-problem"
-          onClick={() => openNewServiceModal()}
+          onClick={() => {
+            if (!firebaseUser) {
+              setIsAuthModalOpen(true);
+            } else {
+              openNewServiceModal();
+            }
+          }}
           className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold rounded-lg shadow-xs transition-all cursor-pointer shrink-0"
         >
           <Plus className="w-3.5 h-3.5" />

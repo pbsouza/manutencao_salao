@@ -68,23 +68,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
     (s) => s.needsTM && s.status !== 'CONCLUÍDO' && s.status !== 'CANCELADO'
   ).length;
 
-  const navPrincipal = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
-    {
-      id: 'kanban',
-      label: 'Kanban',
-      icon: Trello,
-      badge: services.filter((s) => s.status !== 'CONCLUÍDO' && s.status !== 'CANCELADO').length,
-    },
-    {
-      id: 'mytasks',
-      label: 'Minhas Tarefas & Supervisão',
-      icon: User,
-      badge: myTasksCount > 0 ? myTasksCount : null,
-      badgeColor: 'bg-blue-600 text-white',
-    },
-    { id: 'categories', label: 'Categorias', icon: Tag, badge: null },
-  ];
+  const isPublic = !firebaseUser;
+
+  const navPrincipal = isPublic
+    ? [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
+        {
+          id: 'kanban',
+          label: 'Kanban',
+          icon: Trello,
+          badge: services.filter((s) => s.status !== 'CONCLUÍDO' && s.status !== 'CANCELADO').length,
+        },
+      ]
+    : [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
+        {
+          id: 'kanban',
+          label: 'Kanban',
+          icon: Trello,
+          badge: services.filter((s) => s.status !== 'CONCLUÍDO' && s.status !== 'CANCELADO').length,
+        },
+        {
+          id: 'mytasks',
+          label: 'Minhas Tarefas & Supervisão',
+          icon: User,
+          badge: myTasksCount > 0 ? myTasksCount : null,
+          badgeColor: 'bg-blue-600 text-white',
+        },
+        { id: 'categories', label: 'Categorias', icon: Tag, badge: null },
+      ];
 
   const navGestao = [
     { id: 'responsibles', label: 'Equipe & Responsáveis', icon: Users, badge: members.length },
@@ -138,7 +150,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
           <button
             id="btn-sidebar-new-problem"
             onClick={() => {
-              openNewServiceModal();
+              if (!firebaseUser) {
+                setIsAuthModalOpen(true);
+              } else {
+                openNewServiceModal();
+              }
               if (setMobileOpen) setMobileOpen(false);
             }}
             className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded transition-colors shadow-xs cursor-pointer"
@@ -147,21 +163,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
             <span>NOVO PROBLEMA</span>
           </button>
 
-          <button
-            onClick={() => {
-              openProblemTemplatesModal();
-              if (setMobileOpen) setMobileOpen(false);
-            }}
-            className="w-full flex items-center justify-between px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold text-[11px] rounded transition-colors border border-gray-700 cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-3.5 h-3.5 text-blue-400" />
-              <span>Base Pré-fixada</span>
-            </div>
-            <span className="px-1.5 py-0.2 rounded bg-blue-900/60 text-blue-300 font-bold text-[10px]">
-              {problemTemplates.length}
-            </span>
-          </button>
+          {!isPublic && (
+            <button
+              onClick={() => {
+                openProblemTemplatesModal();
+                if (setMobileOpen) setMobileOpen(false);
+              }}
+              className="w-full flex items-center justify-between px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold text-[11px] rounded transition-colors border border-gray-700 cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-3.5 h-3.5 text-blue-400" />
+                <span>Base Pré-fixada</span>
+              </div>
+              <span className="px-1.5 py-0.2 rounded bg-blue-900/60 text-blue-300 font-bold text-[10px]">
+                {problemTemplates.length}
+              </span>
+            </button>
+          )}
         </div>
 
         {/* Navigation items */}
@@ -207,47 +225,49 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
             </div>
           </div>
 
-          {/* Gestão */}
-          <div>
-            <div className="flex items-center justify-between px-4 py-1.5 text-gray-400 uppercase tracking-wider text-[10px] font-bold">
-              <span>Gestão</span>
-              <button
-                onClick={() => openUserManagementModal()}
-                className="text-[10px] font-normal text-blue-400 hover:text-blue-300 flex items-center gap-0.5 cursor-pointer lowercase"
-                title="Cadastrar novo membro"
-              >
-                <UserPlus className="w-3 h-3" /> +usuário
-              </button>
+          {/* Gestão (Somente visível para usuários autenticados) */}
+          {!isPublic && (
+            <div>
+              <div className="flex items-center justify-between px-4 py-1.5 text-gray-400 uppercase tracking-wider text-[10px] font-bold">
+                <span>Gestão</span>
+                <button
+                  onClick={() => openUserManagementModal()}
+                  className="text-[10px] font-normal text-blue-400 hover:text-blue-300 flex items-center gap-0.5 cursor-pointer lowercase"
+                  title="Cadastrar novo membro"
+                >
+                  <UserPlus className="w-3 h-3" /> +usuário
+                </button>
+              </div>
+              <div className="space-y-0.5 px-2">
+                {navGestao.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      id={`nav-item-${item.id}`}
+                      onClick={() => handleNavClick(item.id)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded text-xs transition-colors cursor-pointer text-left ${
+                        isActive
+                          ? 'bg-blue-600 text-white font-semibold'
+                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-400'}`} />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge !== null && item.badge !== undefined && (
+                        <span className="px-1.5 py-0.2 text-[10px] rounded font-bold bg-gray-800 text-gray-400">
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="space-y-0.5 px-2">
-              {navGestao.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    id={`nav-item-${item.id}`}
-                    onClick={() => handleNavClick(item.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded text-xs transition-colors cursor-pointer text-left ${
-                      isActive
-                        ? 'bg-blue-600 text-white font-semibold'
-                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-400'}`} />
-                      <span>{item.label}</span>
-                    </div>
-                    {item.badge !== null && item.badge !== undefined && (
-                      <span className="px-1.5 py-0.2 text-[10px] rounded font-bold bg-gray-800 text-gray-400">
-                        {item.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          )}
 
           {/* Status de Atenção */}
           <div className="pt-1">
@@ -281,62 +301,75 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
 
         {/* User Role Profile Switcher & Auth status */}
         <div className="p-3 bg-gray-900 border-t border-gray-800 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">
-              Perfil Ativo
-            </span>
-            {firebaseUser ? (
+          {isPublic ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">
+                  Área Pública
+                </span>
+                <span className="text-[10px] text-gray-500 font-medium">Modo Visualização</span>
+              </div>
               <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="text-[10px] text-blue-400 hover:text-blue-300 font-bold cursor-pointer"
+                type="button"
+                onClick={() => {
+                  setIsAuthModalOpen(true);
+                  if (setMobileOpen) setMobileOpen(false);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded transition-colors shadow-xs cursor-pointer"
               >
-                Conectado
+                <LogIn className="w-4 h-4" />
+                <span>Entrar no Sistema</span>
               </button>
-            ) : (
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="text-[10px] text-gray-600 hover:text-gray-400 font-medium cursor-pointer"
-                title="Acesso"
-              >
-                •
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs shrink-0 shadow-xs"
-              style={{ backgroundColor: currentUser.avatarColor || '#2563EB' }}
-            >
-              {currentUser.name.charAt(0)}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="relative">
-                <select
-                  id="select-current-user"
-                  value={currentUser.id}
-                  onChange={(e) => {
-                    const found = members.find((m) => m.id === e.target.value);
-                    if (found) setCurrentUser(found);
-                  }}
-                  className="w-full bg-gray-800 text-white text-xs font-semibold rounded px-2 py-1 pr-6 border border-gray-700 focus:outline-none appearance-none cursor-pointer truncate"
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">
+                  Perfil Conectado
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="text-[10px] text-blue-400 hover:text-blue-300 font-bold cursor-pointer"
                 >
-                  {members.map((m) => (
-                    <option key={m.id} value={m.id} className="bg-gray-900 text-white">
-                      {m.name} ({m.role})
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-1.5 top-2 pointer-events-none" />
+                  Opções
+                </button>
               </div>
-              <div className="flex items-center justify-between text-[10px] text-gray-400 mt-0.5">
-                <span className="truncate">{currentUser.role}</span>
-                {firebaseUser && (
-                  <span className="text-emerald-400 font-bold ml-1">• Google/Online</span>
-                )}
+
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs shrink-0 shadow-xs"
+                  style={{ backgroundColor: currentUser.avatarColor || '#2563EB' }}
+                >
+                  {currentUser.name.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="relative">
+                    <select
+                      id="select-current-user"
+                      value={currentUser.id}
+                      onChange={(e) => {
+                        const found = members.find((m) => m.id === e.target.value);
+                        if (found) setCurrentUser(found);
+                      }}
+                      className="w-full bg-gray-800 text-white text-xs font-semibold rounded px-2 py-1 pr-6 border border-gray-700 focus:outline-none appearance-none cursor-pointer truncate"
+                    >
+                      {members.map((m) => (
+                        <option key={m.id} value={m.id} className="bg-gray-900 text-white">
+                          {m.name} ({m.role})
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-1.5 top-2 pointer-events-none" />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-gray-400 mt-0.5">
+                    <span className="truncate">{currentUser.role}</span>
+                    <span className="text-emerald-400 font-bold ml-1">• Online</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </aside>
     </>

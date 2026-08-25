@@ -24,14 +24,27 @@ import { MaintenanceProvider, useMaintenance } from './context/MaintenanceContex
 const MainAppContent: React.FC = () => {
   const {
     activeTab,
+    setActiveTab,
     selectedService,
     closeServiceDetail,
     selectService,
     openSafetyModal,
+    firebaseUser,
   } = useMaintenance();
 
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
+
+  const isPublic = !firebaseUser;
+  const currentActiveTab = isPublic && activeTab !== 'dashboard' && activeTab !== 'kanban'
+    ? 'dashboard'
+    : activeTab;
+
+  React.useEffect(() => {
+    if (isPublic && activeTab !== 'dashboard' && activeTab !== 'kanban') {
+      setActiveTab('dashboard');
+    }
+  }, [isPublic, activeTab, setActiveTab]);
 
   return (
     <div id="main-app-root" className="flex h-screen bg-gray-50 text-gray-900 font-sans overflow-hidden select-none">
@@ -51,26 +64,26 @@ const MainAppContent: React.FC = () => {
         />
 
         {/* Global Filter Bar (shown on Kanban/MyTasks when toggled on) */}
-        {(activeTab === 'kanban' || activeTab === 'mytasks') && showFilters && <FilterBar />}
+        {(currentActiveTab === 'kanban' || currentActiveTab === 'mytasks') && showFilters && <FilterBar />}
 
         {/* Dynamic Workspace Views with bottom safe padding on mobile for bottom bar */}
         <main className="flex-1 min-h-0 relative bg-gray-100/60 pb-16 md:pb-0">
-          {activeTab === 'kanban' && (
+          {currentActiveTab === 'kanban' && (
             <KanbanBoard
               onSelectService={(service) => selectService(service)}
               onRequireSafetyModal={(service) => openSafetyModal(service)}
             />
           )}
-          {activeTab === 'dashboard' && <DashboardView />}
-          {activeTab === 'mytasks' && (
+          {currentActiveTab === 'dashboard' && <DashboardView />}
+          {!isPublic && currentActiveTab === 'mytasks' && (
             <MyTasksView onSelectService={(service) => selectService(service)} />
           )}
-          {activeTab === 'categories' && <CategoriesView />}
-          {activeTab === 'responsibles' && <ResponsiblesView />}
-          {activeTab === 'locations' && <LocationsView />}
-          {activeTab === 'budget' && <BudgetView />}
-          {activeTab === 'reports' && <ReportsView />}
-          {activeTab === 'settings' && <SettingsView />}
+          {!isPublic && currentActiveTab === 'categories' && <CategoriesView />}
+          {!isPublic && currentActiveTab === 'responsibles' && <ResponsiblesView />}
+          {!isPublic && currentActiveTab === 'locations' && <LocationsView />}
+          {!isPublic && currentActiveTab === 'budget' && <BudgetView />}
+          {!isPublic && currentActiveTab === 'reports' && <ReportsView />}
+          {!isPublic && currentActiveTab === 'settings' && <SettingsView />}
         </main>
       </div>
 

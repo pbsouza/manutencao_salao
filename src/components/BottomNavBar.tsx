@@ -2,6 +2,7 @@ import React from 'react';
 import {
   FolderKanban,
   LayoutDashboard,
+  LogIn,
   Menu,
   Plus,
   Trello,
@@ -19,10 +20,13 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ onOpenMobileMenu }) 
     activeTab,
     setActiveTab,
     openNewServiceModal,
+    setIsAuthModalOpen,
+    firebaseUser,
     services,
     currentUser,
   } = useMaintenance();
 
+  const isPublic = !firebaseUser;
   const currentName = (currentUser.name || '').toLowerCase().trim();
 
   // Count active tasks for current user
@@ -42,7 +46,57 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ onOpenMobileMenu }) 
     (s) => s.status !== 'CONCLUÍDO' && s.status !== 'CANCELADO'
   ).length;
 
-  const overdueCount = services.filter((s) => isOverdue(s.dueDate, s.status)).length;
+  if (isPublic) {
+    return (
+      <nav
+        id="mobile-bottom-navbar-public"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-1.5 flex items-center justify-around shadow-lg select-none"
+      >
+        {/* 1. Dashboard */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('dashboard')}
+          className={`flex-1 flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-colors cursor-pointer ${
+            activeTab === 'dashboard'
+              ? 'text-blue-600 font-bold bg-blue-50/80'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <LayoutDashboard className="w-4 h-4 mb-0.5" />
+          <span className="text-[11px] leading-tight tracking-tight">Dashboard</span>
+        </button>
+
+        {/* 2. Kanban */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('kanban')}
+          className={`relative flex-1 flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-colors cursor-pointer ${
+            activeTab === 'kanban'
+              ? 'text-blue-600 font-bold bg-blue-50/80'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Trello className="w-4 h-4 mb-0.5" />
+          <span className="text-[11px] leading-tight tracking-tight">Kanban</span>
+          {openCount > 0 && (
+            <span className="absolute top-1 right-1/4 min-w-3.5 h-3.5 px-0.5 bg-blue-600 text-white rounded-full text-[8px] font-black flex items-center justify-center">
+              {openCount > 99 ? '99+' : openCount}
+            </span>
+          )}
+        </button>
+
+        {/* 3. Entrar */}
+        <button
+          type="button"
+          onClick={() => setIsAuthModalOpen(true)}
+          className="flex-1 flex flex-col items-center justify-center py-1 px-2 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50/50 transition-colors cursor-pointer font-semibold"
+        >
+          <LogIn className="w-4 h-4 mb-0.5" />
+          <span className="text-[11px] leading-tight tracking-tight">Entrar</span>
+        </button>
+      </nav>
+    );
+  }
 
   return (
     <nav

@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "Service": {
+      "title": "Service",
+      "description": "Ordem de serviço ou manutenção",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "string" },
+        "location": { "type": "string" },
+        "createdAt": { "type": "string" }
+      }
+    },
+    "Member": {
+      "title": "Member",
+      "description": "Membro da equipe de manutenção",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" }
+      }
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Categoria de manutenção",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      }
+    },
+    "ProblemTemplate": {
+      "title": "ProblemTemplate",
+      "description": "Problema e solução pré-fixada",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" }
+      }
+    },
+    "Location": {
+      "title": "Location",
+      "description": "Local físico do Salão do Reino",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      }
+    },
+    "MonthlyBudget": {
+      "title": "MonthlyBudget",
+      "description": "Orçamento mensal planejado",
+      "type": "object",
+      "properties": {
+        "month": { "type": "string" },
+        "planned": { "type": "number" },
+        "spent": { "type": "number" }
+      }
+    }
+  },
+  "firestore": {
+    "/services/{serviceId}": {
+      "schema": { "$ref": "#/entities/Service" },
+      "description": "Coleção de ordens de serviço"
+    },
+    "/members/{memberId}": {
+      "schema": { "$ref": "#/entities/Member" },
+      "description": "Coleção de voluntários e membros da equipe"
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Coleção de categorias de serviços"
+    },
+    "/problemTemplates/{problemId}": {
+      "schema": { "$ref": "#/entities/ProblemTemplate" },
+      "description": "Coleção de templates de problemas pré-fixados"
+    },
+    "/locations/{locationId}": {
+      "schema": { "$ref": "#/entities/Location" },
+      "description": "Coleção de locais do imóvel"
+    },
+    "/monthlyBudgets/{monthId}": {
+      "schema": { "$ref": "#/entities/MonthlyBudget" },
+      "description": "Coleção de orçamentos mensais"
+    }
+  }
+}

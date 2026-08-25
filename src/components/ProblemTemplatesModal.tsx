@@ -71,8 +71,11 @@ export const ProblemTemplatesModal: React.FC = () => {
   const [batchDueDate, setBatchDueDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [batchSuccess, setBatchSuccess] = useState<string | null>(null);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isConfirmRestoreOpen, setIsConfirmRestoreOpen] = useState(false);
+  const [isDeletingTemplate, setIsDeletingTemplate] = useState(false);
 
-  if (!isProblemTemplatesModalOpen) return null;
+  if (!isProblemTemplatesModalOpen || !firebaseUser) return null;
 
   const filteredTemplates = problemTemplates.filter((t) => {
     const matchCat = selectedCategory === 'ALL' || t.category === selectedCategory;
@@ -156,10 +159,6 @@ export const ProblemTemplatesModal: React.FC = () => {
     setIsCreatingNew(false);
     setEditingTemplate(null);
   };
-
-  const [templateToDelete, setTemplateToDelete] = useState<{ id: string; name: string } | null>(null);
-  const [isConfirmRestoreOpen, setIsConfirmRestoreOpen] = useState(false);
-  const [isDeletingTemplate, setIsDeletingTemplate] = useState(false);
 
   const handleConfirmDeleteTemplate = async () => {
     if (!templateToDelete) return;
