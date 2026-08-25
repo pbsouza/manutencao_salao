@@ -234,15 +234,46 @@ const DEFAULT_ADMIN_USER: UserMember = {
   active: true,
 };
 
+const getInitialCachedData = <T,>(key: string, fallback: T): T => {
+  try {
+    const item = localStorage.getItem(key);
+    if (!item) return fallback;
+    const parsed = JSON.parse(item);
+    return parsed !== undefined && parsed !== null ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const saveToLocalStorage = (key: string, data: unknown) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {
+    // Ignore storage quota or disabled localStorage errors
+  }
+};
+
 const MaintenanceContext = createContext<MaintenanceContextType | undefined>(undefined);
 
 export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [services, setServices] = useState<ServiceItem[]>([]);
-  const [categories, setCategories] = useState<CategoryItem[]>([]);
-  const [problemTemplates, setProblemTemplates] = useState<ProblemTemplate[]>([]);
-  const [locations, setLocations] = useState<LocationItem[]>([]);
-  const [members, setMembers] = useState<UserMember[]>([]);
-  const [monthlyBudgets, setMonthlyBudgets] = useState<MonthlyBudget[]>([]);
+  const [services, setServices] = useState<ServiceItem[]>(() =>
+    getInitialCachedData<ServiceItem[]>('sr_cache_services_v6', [])
+  );
+  const [categories, setCategories] = useState<CategoryItem[]>(() =>
+    getInitialCachedData<CategoryItem[]>('sr_cache_categories_v6', [])
+  );
+  const [problemTemplates, setProblemTemplates] = useState<ProblemTemplate[]>(() =>
+    getInitialCachedData<ProblemTemplate[]>('sr_cache_problemTemplates_v6', [])
+  );
+  const [locations, setLocations] = useState<LocationItem[]>(() =>
+    getInitialCachedData<LocationItem[]>('sr_cache_locations_v6', [])
+  );
+  const [members, setMembers] = useState<UserMember[]>(() =>
+    getInitialCachedData<UserMember[]>('sr_cache_members_v6', [])
+  );
+  const [monthlyBudgets, setMonthlyBudgets] = useState<MonthlyBudget[]>(() =>
+    getInitialCachedData<MonthlyBudget[]>('sr_cache_budgets_v6', [])
+  );
 
   // Auth State
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -255,7 +286,16 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   });
 
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    try {
+      const cached = localStorage.getItem('sr_cache_services_v6');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return false;
+      }
+    } catch {}
+    return true;
+  });
   const [firebaseConnected, setFirebaseConnected] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>('kanban');
   const [filterState, setFilterState] = useState<FilterState>(INITIAL_FILTER_STATE);
@@ -298,8 +338,6 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Firestore Real-Time Subscriptions
   useEffect(() => {
-    setIsLoading(true);
-
     const unsubServices = onSnapshot(
       collection(db, 'services'),
       (snap) => {
@@ -351,7 +389,9 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
         items.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         setServices(items);
+        saveToLocalStorage('sr_cache_services_v6', items);
         setIsLoading(false);
+        setFirebaseConnected(true);
       },
       (err) => {
         console.error('Firestore services listener error:', err);
@@ -375,6 +415,7 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
           return { ...cat, id: docSnap.id };
         });
         setCategories(items);
+        saveToLocalStorage('sr_cache_categories_v6', items);
       },
       (err) => console.error('Firestore categories listener error:', err)
     );
@@ -393,6 +434,7 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
           return { ...prob, id: docSnap.id };
         });
         setProblemTemplates(items);
+        saveToLocalStorage('sr_cache_problemTemplates_v6', items);
       },
       (err) => console.error('Firestore problemTemplates listener error:', err)
     );
@@ -405,6 +447,7 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
           id: docSnap.id,
         }));
         setLocations(items);
+        saveToLocalStorage('sr_cache_locations_v6', items);
       },
       (err) => console.error('Firestore locations listener error:', err)
     );
@@ -496,6 +539,7 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
 
         setMembers(realMembers);
+        saveToLocalStorage('sr_cache_members_v6', realMembers);
 
         setCurrentUser((prev) => {
           if (activeAuthUser) {
@@ -547,6 +591,7 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
           month: docSnap.id,
         }));
         setMonthlyBudgets(items);
+        saveToLocalStorage('sr_cache_budgets_v6', items);
       },
       (err) => console.error('Firestore budgets listener error:', err)
     );

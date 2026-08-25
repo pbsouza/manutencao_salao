@@ -2,6 +2,8 @@ import { initializeApp, getApps } from 'firebase/app';
 import {
   initializeFirestore,
   getFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   collection,
   doc,
   getDoc,
@@ -30,20 +32,33 @@ import config from '../../firebase-applet-config.json';
 
 const app = getApps().length === 0 ? initializeApp(config) : getApps()[0];
 
-// Initialize Firestore with robust long-polling connection settings to prevent iframe/proxy disconnects
+// Initialize Firestore with persistent IndexedDB local cache and robust network settings for instant startup
 let firestoreInstance;
 try {
   firestoreInstance = initializeFirestore(
     app,
     {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
       experimentalForceLongPolling: true,
     },
     config.firestoreDatabaseId || undefined
   );
-} catch {
-  firestoreInstance = config.firestoreDatabaseId
-    ? getFirestore(app, config.firestoreDatabaseId)
-    : getFirestore(app);
+} catch (e1) {
+  try {
+    firestoreInstance = initializeFirestore(
+      app,
+      {
+        experimentalForceLongPolling: true,
+      },
+      config.firestoreDatabaseId || undefined
+    );
+  } catch {
+    firestoreInstance = config.firestoreDatabaseId
+      ? getFirestore(app, config.firestoreDatabaseId)
+      : getFirestore(app);
+  }
 }
 
 export const db = firestoreInstance;

@@ -126,6 +126,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     firebaseUser,
     canEditServices,
     setIsAuthModalOpen,
+    isLoading,
   } = useMaintenance();
 
   const jsonInputRef = useRef<HTMLInputElement>(null);
@@ -494,8 +495,21 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
       )}
 
-      {/* Empty Board Initial Onboarding Banner (When 0 services in board) */}
-      {services.length === 0 && (
+      {/* Loading Skeleton when first initializing from database */}
+      {isLoading && services.length === 0 && (
+        <div className="mx-3 sm:mx-4 mt-3 p-3 bg-blue-50/60 border border-blue-200 rounded-xl flex items-center justify-between animate-pulse">
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-ping" />
+            <span className="text-xs font-bold text-blue-900">
+              Sincronizando manutenções com o banco de dados...
+            </span>
+          </div>
+          <span className="text-[10px] text-blue-700 font-medium">Carregando quadro</span>
+        </div>
+      )}
+
+      {/* Empty Board Initial Onboarding Banner (Only when loaded and genuinely 0 services in board) */}
+      {!isLoading && services.length === 0 && (
         <div className="mx-3 sm:mx-4 mt-3 p-3.5 sm:p-4 bg-white border border-blue-200 rounded-xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -749,12 +763,19 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   {/* Column Cards List */}
                   <div className="flex-1 p-2 space-y-2">
                     {colServices.length === 0 ? (
-                      <div className="h-28 flex flex-col items-center justify-center text-center p-3 border border-dashed border-gray-300 rounded-lg">
-                        <p className="text-[11px] text-gray-500 font-medium">Nenhum serviço</p>
-                        <span className="text-[9px] text-gray-400 mt-0.5">
-                          Arraste um card aqui
-                        </span>
-                      </div>
+                      isLoading ? (
+                        <div className="space-y-2 p-1">
+                          <div className="h-20 bg-white/60 rounded-lg border border-gray-200/60 animate-pulse" />
+                          <div className="h-16 bg-white/40 rounded-lg border border-gray-200/40 animate-pulse hidden sm:block" />
+                        </div>
+                      ) : (
+                        <div className="h-28 flex flex-col items-center justify-center text-center p-3 border border-dashed border-gray-300 rounded-lg">
+                          <p className="text-[11px] text-gray-500 font-medium">Nenhum serviço</p>
+                          <span className="text-[9px] text-gray-400 mt-0.5">
+                            Arraste um card aqui
+                          </span>
+                        </div>
+                      )
                     ) : (
                       colServices.map((service) => (
                         <ServiceCard
