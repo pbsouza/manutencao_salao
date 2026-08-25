@@ -42,6 +42,9 @@ export const Header: React.FC<HeaderProps> = ({
     firebaseUser,
     services,
     problemTemplates,
+    hasRestrictedAccess,
+    isUserApproved,
+    isAdmin,
   } = useMaintenance();
 
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
@@ -179,8 +182,8 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Problemas Pré-fixados Button (Autenticado) */}
-        {firebaseUser && (
+        {/* Problemas Pré-fixados Button (Somente Acesso Restrito Liberado) */}
+        {hasRestrictedAccess && (
           <button
             onClick={openProblemTemplatesModal}
             className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition cursor-pointer"
@@ -194,8 +197,8 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        {/* Designação em Massa (Autenticado) */}
-        {firebaseUser && (
+        {/* Designação em Massa (Somente Acesso Restrito Liberado) */}
+        {hasRestrictedAccess && (
           <button
             onClick={() => openBatchAssignModal()}
             className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition cursor-pointer"
@@ -238,7 +241,35 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Auth / Login Status Button */}
-        {firebaseUser ? (
+        {!firebaseUser ? (
+          <button
+            onClick={() => setIsAuthModalOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition cursor-pointer"
+            title="Entrar no Sistema"
+          >
+            <LogIn className="w-3.5 h-3.5" />
+            <span className="inline">Entrar</span>
+          </button>
+        ) : !isUserApproved ? (
+          <button
+            onClick={() => setIsAuthModalOpen(true)}
+            className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-xs font-bold text-amber-900 transition cursor-pointer"
+            title="Conta conectada aguardando liberação do Administrador"
+          >
+            <div
+              className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] text-white font-bold shrink-0"
+              style={{ backgroundColor: currentUser.avatarColor || '#d97706' }}
+            >
+              {currentUser.name.charAt(0)}
+            </div>
+            <span className="max-w-[80px] sm:max-w-[110px] truncate text-[11px] sm:text-xs font-semibold">
+              {currentUser.name.split(' ')[0]}
+            </span>
+            <span className="text-[9px] bg-amber-200 text-amber-900 px-1 py-0.2 rounded font-bold uppercase hidden sm:inline">
+              Pendente
+            </span>
+          </button>
+        ) : (
           <button
             onClick={() => setIsAuthModalOpen(true)}
             className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-700 transition cursor-pointer"
@@ -254,33 +285,20 @@ export const Header: React.FC<HeaderProps> = ({
               {firebaseUser.displayName || currentUser.name.split(' ')[0]}
             </span>
           </button>
-        ) : (
-          <button
-            onClick={() => setIsAuthModalOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition cursor-pointer"
-            title="Entrar no Sistema"
-          >
-            <LogIn className="w-3.5 h-3.5" />
-            <span className="inline">Entrar</span>
-          </button>
         )}
 
-        {/* Primary "+ NOVO PROBLEMA" Button */}
-        <button
-          id="btn-header-new-problem"
-          onClick={() => {
-            if (!firebaseUser) {
-              setIsAuthModalOpen(true);
-            } else {
-              openNewServiceModal();
-            }
-          }}
-          className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold rounded-lg shadow-xs transition-all cursor-pointer shrink-0"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">NOVO PROBLEMA</span>
-          <span className="sm:hidden">NOVO</span>
-        </button>
+        {/* Primary "+ NOVO PROBLEMA" Button (Somente para usuários com acesso restrito liberado) */}
+        {hasRestrictedAccess && (
+          <button
+            id="btn-header-new-problem"
+            onClick={() => openNewServiceModal()}
+            className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold rounded-lg shadow-xs transition-all cursor-pointer shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">NOVO PROBLEMA</span>
+            <span className="sm:hidden">NOVO</span>
+          </button>
+        )}
       </div>
 
       {/* Mobile Search Overlay Input Bar */}

@@ -63,6 +63,7 @@ export const UserManagementModal: React.FC = () => {
   const [assignedCategories, setAssignedCategories] = useState<string[]>([]);
   const [active, setActive] = useState(true);
   const [canEdit, setCanEdit] = useState<boolean>(true);
+  const [isApproved, setIsApproved] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
@@ -93,6 +94,7 @@ export const UserManagementModal: React.FC = () => {
       setActive(editingMemberForModal.active !== false);
       const isMemberAdmin = memberRole === 'ADMINISTRADOR' || editingMemberForModal.email === 'belchior87@gmail.com';
       setCanEdit(isMemberAdmin ? true : (editingMemberForModal.canEdit ?? false));
+      setIsApproved(isMemberAdmin ? true : (editingMemberForModal.isApproved ?? false));
     } else {
       setName('');
       setEmail('');
@@ -102,6 +104,7 @@ export const UserManagementModal: React.FC = () => {
       setAssignedCategories([]);
       setActive(true);
       setCanEdit(false);
+      setIsApproved(false);
     }
     setError(null);
     setBatchSuccessCount(null);
@@ -146,6 +149,7 @@ export const UserManagementModal: React.FC = () => {
       `${name.toLowerCase().replace(/[^a-z0-9]/g, '.')}.${Date.now().toString().slice(-4)}@interno.app`;
     const isMemberAdmin = role === 'ADMINISTRADOR' || safeEmail === 'belchior87@gmail.com';
     const finalCanEdit = isMemberAdmin ? true : canEdit;
+    const finalIsApproved = isMemberAdmin ? true : isApproved;
 
     setIsSaving(true);
     setError(null);
@@ -161,6 +165,7 @@ export const UserManagementModal: React.FC = () => {
           assignedCategories,
           active,
           canEdit: finalCanEdit,
+          isApproved: finalIsApproved,
         });
       } else {
         await addMember({
@@ -172,6 +177,7 @@ export const UserManagementModal: React.FC = () => {
           assignedCategories,
           active,
           canEdit: finalCanEdit,
+          isApproved: finalIsApproved,
         });
       }
       setIsSaving(false);
@@ -609,6 +615,55 @@ export const UserManagementModal: React.FC = () => {
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Liberação de Acesso Restrito pelo ADM */}
+              <div className="flex items-center justify-between p-3 bg-blue-50/50 rounded-lg border border-blue-200">
+                <div className="pr-4">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-blue-950 block">
+                      Acesso Restrito Liberado pelo ADM
+                    </span>
+                    {isApproved && (
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-blue-600 text-white uppercase">
+                        Liberado
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-blue-700 block mt-0.5">
+                    Permite ao usuário ver além da área pública quando fizer login (acessar ferramentas de manutenção e gestão)
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={role === 'ADMINISTRADOR' ? true : isApproved}
+                    disabled={role === 'ADMINISTRADOR'}
+                    onChange={(e) => setIsApproved(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                </label>
+              </div>
+
+              {/* Permissão de Edição de Serviços */}
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="pr-4">
+                  <span className="text-xs font-bold text-gray-900 block">Permissão de Edição & Cadastro</span>
+                  <span className="text-[10px] text-gray-500 block mt-0.5">
+                    Permite criar novos problemas, alterar status no Kanban e editar manutenções
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={role === 'ADMINISTRADOR' ? true : canEdit}
+                    disabled={role === 'ADMINISTRADOR'}
+                    onChange={(e) => setCanEdit(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600 peer-disabled:opacity-50"></div>
+                </label>
               </div>
 
               {/* Active status */}

@@ -45,6 +45,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
     setCurrentUser,
     problemTemplates,
     members,
+    hasRestrictedAccess,
+    isUserApproved,
+    isAdmin,
   } = useMaintenance();
 
   const myTasksCount = services.filter((s) => {
@@ -68,7 +71,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
     (s) => s.needsTM && s.status !== 'CONCLUÍDO' && s.status !== 'CANCELADO'
   ).length;
 
-  const isPublic = !firebaseUser;
+  // Sem liberação do ADM, mesmo logado, aparece somente a área pública
+  const isPublic = !hasRestrictedAccess;
 
   const navPrincipal = isPublic
     ? [
@@ -301,7 +305,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
 
         {/* User Role Profile Switcher & Auth status */}
         <div className="p-3 bg-gray-900 border-t border-gray-800 space-y-2">
-          {isPublic ? (
+          {!firebaseUser ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">
@@ -319,6 +323,52 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
               >
                 <LogIn className="w-4 h-4" />
                 <span>Entrar no Sistema</span>
+              </button>
+            </div>
+          ) : !isUserApproved ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-amber-400 uppercase font-bold tracking-tight flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  Acesso Pendente
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAuthModalOpen(true);
+                    if (setMobileOpen) setMobileOpen(false);
+                  }}
+                  className="text-[10px] text-amber-300 hover:underline font-bold cursor-pointer"
+                >
+                  Status
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 p-2 bg-gray-800/80 rounded-lg border border-amber-500/30">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs shrink-0 shadow-xs"
+                  style={{ backgroundColor: currentUser.avatarColor || '#2563EB' }}
+                >
+                  {currentUser.name.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-white text-xs font-bold truncate">
+                    {currentUser.name}
+                  </div>
+                  <div className="text-[10px] text-amber-400 font-medium truncate">
+                    Aguardando liberação do ADM
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAuthModalOpen(true);
+                  if (setMobileOpen) setMobileOpen(false);
+                }}
+                className="w-full py-1 text-center text-[10px] text-gray-400 hover:text-gray-200 cursor-pointer"
+              >
+                Visualizando apenas área pública
               </button>
             </div>
           ) : (

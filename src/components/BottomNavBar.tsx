@@ -24,9 +24,11 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ onOpenMobileMenu }) 
     firebaseUser,
     services,
     currentUser,
+    hasRestrictedAccess,
+    isUserApproved,
   } = useMaintenance();
 
-  const isPublic = !firebaseUser;
+  const isPublic = !hasRestrictedAccess;
   const currentName = (currentUser.name || '').toLowerCase().trim();
 
   // Count active tasks for current user
@@ -85,15 +87,26 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({ onOpenMobileMenu }) 
           )}
         </button>
 
-        {/* 3. Entrar */}
-        <button
-          type="button"
-          onClick={() => setIsAuthModalOpen(true)}
-          className="flex-1 flex flex-col items-center justify-center py-1 px-2 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50/50 transition-colors cursor-pointer font-semibold"
-        >
-          <LogIn className="w-4 h-4 mb-0.5" />
-          <span className="text-[11px] leading-tight tracking-tight">Entrar</span>
-        </button>
+        {/* 3. Auth Status Button */}
+        {!firebaseUser ? (
+          <button
+            type="button"
+            onClick={() => setIsAuthModalOpen(true)}
+            className="flex-1 flex flex-col items-center justify-center py-1 px-2 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50/50 transition-colors cursor-pointer font-semibold"
+          >
+            <LogIn className="w-4 h-4 mb-0.5" />
+            <span className="text-[11px] leading-tight tracking-tight">Entrar</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsAuthModalOpen(true)}
+            className="flex-1 flex flex-col items-center justify-center py-1 px-2 rounded-lg text-amber-700 hover:bg-amber-50 transition-colors cursor-pointer font-semibold"
+          >
+            <User className="w-4 h-4 mb-0.5 text-amber-600" />
+            <span className="text-[10px] leading-tight tracking-tight text-amber-700">Pendente ADM</span>
+          </button>
+        )}
       </nav>
     );
   }

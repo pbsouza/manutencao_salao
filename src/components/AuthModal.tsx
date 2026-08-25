@@ -21,6 +21,9 @@ export const AuthModal: React.FC = () => {
     setIsAuthModalOpen,
     firebaseUser,
     currentUser,
+    isAdmin,
+    isUserApproved,
+    hasRestrictedAccess,
     loginWithGoogle,
     loginWithEmail,
     registerWithEmail,
@@ -130,14 +133,51 @@ export const AuthModal: React.FC = () => {
         <div className="p-5 overflow-y-auto space-y-4">
           {/* If already logged in */}
           {firebaseUser && (
-            <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-lg space-y-2">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span className="text-xs font-bold text-emerald-900">
-                  Sessão ativa com: {firebaseUser.email || currentUser.name}
-                </span>
+            <div
+              className={`p-3.5 rounded-lg space-y-2 border ${
+                isUserApproved
+                  ? 'bg-emerald-50 border-emerald-200'
+                  : 'bg-amber-50 border-amber-300'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {isUserApproved ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <span className="flex h-2.5 w-2.5 relative">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                    </span>
+                  )}
+                  <span
+                    className={`text-xs font-bold ${
+                      isUserApproved ? 'text-emerald-900' : 'text-amber-900'
+                    }`}
+                  >
+                    {isUserApproved
+                      ? `Sessão ativa com: ${firebaseUser.email || currentUser.name}`
+                      : 'Aguardando Liberação do Administrador'}
+                  </span>
+                </div>
+                {isUserApproved ? (
+                  <span className="px-1.5 py-0.2 bg-emerald-200 text-emerald-800 text-[10px] font-bold rounded">
+                    Acesso Liberado
+                  </span>
+                ) : (
+                  <span className="px-1.5 py-0.2 bg-amber-200 text-amber-900 text-[10px] font-bold rounded">
+                    Pendente
+                  </span>
+                )}
               </div>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-gray-600 pt-2 border-t border-emerald-100 gap-2">
+
+              {!isUserApproved && (
+                <div className="p-2.5 bg-white/70 rounded-md border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
+                  Sua conta está conectada (<strong>{firebaseUser.email}</strong>), mas o acesso à área restrita e ferramentas de edição só é habilitado após liberação do Administrador (<strong>Pedro Belchior</strong>). Enquanto isso, você visualiza a <strong>área pública</strong> do sistema.
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-gray-600 pt-2 border-t border-gray-200/60 gap-2">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span>Perfil:</span>
                   <strong className="text-gray-900">{currentUser.name}</strong>
@@ -146,19 +186,23 @@ export const AuthModal: React.FC = () => {
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsAuthModalOpen(false);
-                      openUserManagementModal(currentUser);
-                    }}
-                    className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-bold text-xs cursor-pointer transition"
-                    title="Alterar função (Administrador, Coordenador, etc.) ou dados"
-                  >
-                    <Shield className="w-3.5 h-3.5" />
-                    <span>Editar Função</span>
-                  </button>
-                  <span className="text-gray-300">|</span>
+                  {isUserApproved && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAuthModalOpen(false);
+                          openUserManagementModal(currentUser);
+                        }}
+                        className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-bold text-xs cursor-pointer transition"
+                        title="Alterar função (Administrador, Coordenador, etc.) ou dados"
+                      >
+                        <Shield className="w-3.5 h-3.5" />
+                        <span>Editar Função</span>
+                      </button>
+                      <span className="text-gray-300">|</span>
+                    </>
+                  )}
                   <button
                     type="button"
                     onClick={() => logout()}

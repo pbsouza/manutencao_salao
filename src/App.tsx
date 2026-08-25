@@ -30,12 +30,17 @@ const MainAppContent: React.FC = () => {
     selectService,
     openSafetyModal,
     firebaseUser,
+    hasRestrictedAccess,
+    isUserApproved,
+    currentUser,
+    setIsAuthModalOpen,
   } = useMaintenance();
 
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
 
-  const isPublic = !firebaseUser;
+  // Sem liberação do ADM, mesmo logado, aparece somente a área pública (dashboard e kanban)
+  const isPublic = !hasRestrictedAccess;
   const currentActiveTab = isPublic && activeTab !== 'dashboard' && activeTab !== 'kanban'
     ? 'dashboard'
     : activeTab;
@@ -62,6 +67,27 @@ const MainAppContent: React.FC = () => {
           showFilters={showFilters}
           setShowFilters={setShowFilters}
         />
+
+        {/* Pending Admin Approval Banner */}
+        {firebaseUser && !isUserApproved && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-amber-900">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
+              <span>
+                <strong>Acesso Pendente:</strong> Olá, <strong>{currentUser.name}</strong>! Você está logado, mas o acesso à área restrita aguarda liberação pelo Administrador. Você está visualizando a <strong>área pública</strong>.
+              </span>
+            </div>
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-md border border-amber-300 transition text-[11px] cursor-pointer shrink-0"
+            >
+              Ver Status da Conta
+            </button>
+          </div>
+        )}
 
         {/* Global Filter Bar (shown on Kanban/MyTasks when toggled on) */}
         {(currentActiveTab === 'kanban' || currentActiveTab === 'mytasks') && showFilters && <FilterBar />}

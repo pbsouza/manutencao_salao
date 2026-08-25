@@ -63,7 +63,11 @@ interface MaintenanceContextType {
   isAuthenticated: boolean;
   canEditServices: boolean;
   isAdmin: boolean;
+  isUserApproved: boolean;
+  hasRestrictedAccess: boolean;
+  isPublic: boolean;
   toggleMemberEditPermission: (memberId: string, canEdit: boolean) => Promise<void>;
+  toggleMemberApproval: (memberId: string, isApproved: boolean) => Promise<void>;
   activeTab: string;
   filterState: FilterState;
   selectedService: ServiceItem | null;
@@ -484,6 +488,7 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
               assignedCategories: [],
               active: true,
               canEdit: isUserAdmin ? true : false,
+              isApproved: isUserAdmin ? true : false,
             };
             setDoc(doc(db, 'members', newMember.id), newMember).catch(console.error);
             realMembers.push(newMember);
@@ -584,16 +589,19 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (existing) {
         setCurrentUser(existing);
       } else {
+        const isUserAdmin = userEmail === 'belchior87@gmail.com';
         const newMember: UserMember = {
           id: `user-${user.uid.slice(0, 8)}`,
           uid: user.uid,
           name: user.displayName || userEmail.split('@')[0] || 'Usuário Google',
           email: userEmail,
           photoURL: user.photoURL || undefined,
-          role: 'COORDENADOR',
+          role: isUserAdmin ? 'ADMINISTRADOR' : 'COORDENADOR',
           avatarColor: '#2563eb',
           assignedCategories: [],
           active: true,
+          canEdit: isUserAdmin ? true : false,
+          isApproved: isUserAdmin ? true : false,
         };
         await setDoc(doc(db, 'members', newMember.id), newMember);
         setCurrentUser(newMember);
@@ -616,15 +624,18 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       if (existing) {
         setCurrentUser(existing);
       } else {
+        const isUserAdmin = userEmail === 'belchior87@gmail.com';
         const newMember: UserMember = {
           id: `user-${user.uid.slice(0, 8)}`,
           uid: user.uid,
           name: user.displayName || userEmail.split('@')[0],
           email: userEmail,
-          role: 'RESPONSÁVEL',
+          role: isUserAdmin ? 'ADMINISTRADOR' : 'RESPONSÁVEL',
           avatarColor: '#2563eb',
           assignedCategories: [],
           active: true,
+          canEdit: isUserAdmin ? true : false,
+          isApproved: isUserAdmin ? true : false,
         };
         await setDoc(doc(db, 'members', newMember.id), newMember);
         setCurrentUser(newMember);
@@ -665,13 +676,14 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         name: name.trim(),
         email: email.trim().toLowerCase(),
         phone: phone?.trim() || '',
-        role: role || 'RESPONSÁVEL',
+        role: isUserAdmin ? 'ADMINISTRADOR' : (role || 'RESPONSÁVEL'),
         avatarColor: ['#0284c7', '#7c3aed', '#d97706', '#0d9488', '#2563eb', '#dc2626'][
           Math.floor(Math.random() * 6)
         ],
         assignedCategories: assignedCategories || [],
         active: true,
         canEdit: isUserAdmin ? true : false,
+        isApproved: isUserAdmin ? true : false,
       };
 
       await setDoc(doc(db, 'members', newMember.id), newMember);
@@ -740,10 +752,25 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       (firebaseUser && firebaseUser.email && firebaseUser.email.toLowerCase().trim() === 'belchior87@gmail.com')
   );
 
-  const canEditServices = Boolean(isAdmin || currentUser.canEdit === true);
+  // Usuário tem aprovação/liberação do ADM se for Administrador OU se tiver sido liberado explicitamente
+  const isUserApproved = Boolean(
+    isAdmin ||
+      currentUser.isApproved === true ||
+      currentUser.canEdit === true
+  );
+
+  // Apenas tem acesso restrito se estiver com login ativo E liberado pelo Administrador
+  const hasRestrictedAccess = Boolean(firebaseUser && isUserApproved);
+  const isPublic = !hasRestrictedAccess;
+
+  const canEditServices = Boolean(hasRestrictedAccess && (isAdmin || currentUser.canEdit === true));
+
+  const toggleMemberApproval = async (memberId: string, isApproved: boolean) => {
+    await updateMember(memberId, { isApproved, canEdit: isApproved });
+  };
 
   const toggleMemberEditPermission = async (memberId: string, canEdit: boolean) => {
-    await updateMember(memberId, { canEdit });
+    await updateMember(memberId, { canEdit, isApproved: canEdit ? true : undefined });
   };
 
   const openNewServiceModal = (preselectedCategory?: string) => {
@@ -1650,7 +1677,11 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         isAuthenticated: !!firebaseUser,
         canEditServices,
         isAdmin,
+        isUserApproved,
+        hasRestrictedAccess,
+        isPublic,
         toggleMemberEditPermission,
+        toggleMemberApproval,
         activeTab,
         filterState,
         selectedService,

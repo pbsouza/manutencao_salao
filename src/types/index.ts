@@ -52,6 +52,7 @@ export interface UserMember {
   uid?: string; // Firebase Auth UID
   photoURL?: string;
   canEdit?: boolean; // Permissão de edição concedida pelo Administrador após login
+  isApproved?: boolean; // Acesso liberado pelo Administrador para a área restrita
 }
 
 export interface BatchAssignPayload {
