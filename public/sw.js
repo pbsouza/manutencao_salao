@@ -1,4 +1,4 @@
-const CACHE_NAME = 'manutencao-sr-pwa-v2';
+const CACHE_NAME = 'manutencao-sr-pwa-v3';
 
 // Get base path from ServiceWorker registration scope (e.g. '/manutencao_salao/' or '/')
 const getScopePath = () => {
@@ -20,7 +20,9 @@ const STATIC_ASSETS = [
   `${BASE_PATH}favicon.png`,
   `${BASE_PATH}icon.svg`,
   `${BASE_PATH}icon-192.png`,
+  `${BASE_PATH}icon-192x192.png`,
   `${BASE_PATH}icon-512.png`,
+  `${BASE_PATH}icon-512x512.png`,
   `${BASE_PATH}icon-maskable-512.png`,
   `${BASE_PATH}apple-touch-icon.png`
 ];
