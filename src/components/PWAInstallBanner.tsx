@@ -46,8 +46,15 @@ export const PWAInstallBanner: React.FC = () => {
         className="fixed bottom-16 sm:bottom-6 right-3 sm:right-6 z-40 max-w-sm w-full bg-slate-900/95 text-white p-3.5 rounded-2xl border border-slate-700 shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-5 duration-300 flex items-start gap-3"
       >
         {/* App Icon */}
-        <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 shadow-md border border-blue-400/40">
-          <img src="icon-192.png" alt="Logo" className="w-7 h-7 object-contain" />
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shrink-0 shadow-md border border-blue-400/40 overflow-hidden">
+          <img
+            src={`${import.meta.env.BASE_URL}icon-192.png`}
+            alt="Logo"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
         </div>
 
         {/* Content */}
@@ -103,8 +110,15 @@ export const PWAInstallBanner: React.FC = () => {
           >
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 shadow-md">
-                  <img src="icon-192.png" alt="Logo" className="w-7 h-7 object-contain" />
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shrink-0 shadow-md overflow-hidden">
+                  <img
+                    src={`${import.meta.env.BASE_URL}icon-192.png`}
+                    alt="Logo"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
