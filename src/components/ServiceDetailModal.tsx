@@ -4,15 +4,20 @@ import {
   AlertTriangle,
   ArrowRight,
   Calendar,
+  Camera,
   CheckCircle2,
   Clock,
   DollarSign,
+  Download,
+  Eye,
   FileImage,
   FileText,
   HardHat,
   History,
   Info,
+  Loader2,
   MapPin,
+  Maximize2,
   Save,
   ShieldAlert,
   ShieldCheck,
@@ -22,6 +27,7 @@ import {
   User,
   UserCheck,
   X,
+  Zap,
 } from 'lucide-react';
 import { isDummyPerson, useMaintenance } from '../context/MaintenanceContext';
 import {
@@ -41,6 +47,7 @@ import {
   MONTH_NAMES,
   RISK_DEFINITIONS,
 } from '../utils/priority';
+import { formatBytes, optimizePhoto } from '../utils/imageOptimizer';
 import { KANBAN_COLUMNS } from './KanbanBoard';
 import { ConfirmModal } from './ConfirmModal';
 
@@ -135,9 +142,16 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
 
   // Attachments
   const [attachments, setAttachments] = useState<Attachment[]>(service.attachments || []);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isOptimizingPhotos, setIsOptimizingPhotos] = useState(false);
+  const [optimizingProgress, setOptimizingProgress] = useState({ current: 0, total: 0 });
+  const [previewPhoto, setPreviewPhoto] = useState<Attachment | null>(null);
+  const [photoToDelete, setPhotoToDelete] = useState<Attachment | null>(null);
+  const [isDeletingPhoto, setIsDeletingPhoto] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Security check: Only logged-in Administrators can delete photos
+  const canDeletePhoto = Boolean(firebaseUser && isAdmin);
 
   const overdue = isOverdue(dueDate, status);
 
@@ -265,35 +279,105 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
     onClose();
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canEditServices) {
+      alert('Você não tem permissão para adicionar fotos. Solicite autorização ao Administrador.');
+      return;
+    }
+
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    Array.from(files).forEach((file: File) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        const newAtt: Attachment = {
-          id: `att-${Date.now()}-${Math.random()}`,
-          name: file.name,
-          url: result,
-          type: 'image',
-          size: file.size,
-          uploadedAt: new Date().toISOString(),
-          uploadedBy: currentUser.name,
-        };
-        const updatedAtts = [...attachments, newAtt];
-        setAttachments(updatedAtts);
-        updateService(service.id, { attachments: updatedAtts });
-      };
-      reader.readAsDataURL(file);
-    });
+    const fileList: File[] = Array.from(files);
+    setIsOptimizingPhotos(true);
+    setOptimizingProgress({ current: 0, total: fileList.length });
+
+    const newAttachments: Attachment[] = [];
+
+    for (let i = 0; i < fileList.length; i++) {
+      const file: File = fileList[i];
+      setOptimizingProgress({ current: i + 1, total: fileList.length });
+
+      try {
+        if (file.type.startsWith('image/')) {
+          const opt = await optimizePhoto(file, {
+            maxWidth: 1440,
+            maxHeight: 1440,
+            initialQuality: 0.82,
+            targetMaxBytes: 190 * 1024,
+            applySharpen: true,
+          });
+
+          newAttachments.push({
+            id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            name: opt.name,
+            url: opt.dataUrl,
+            type: 'image',
+            size: opt.size,
+            originalSize: opt.originalSize,
+            width: opt.width,
+            height: opt.height,
+            savedPercentage: opt.savedPercentage,
+            uploadedAt: new Date().toISOString(),
+            uploadedBy: currentUser.name || 'Pedro Belchior',
+          });
+        } else {
+          // Non-image fallback (documents)
+          const reader = new FileReader();
+          await new Promise<void>((resolve) => {
+            reader.onload = (event) => {
+              const result = event.target?.result as string;
+              newAttachments.push({
+                id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                name: file.name,
+                url: result,
+                type: 'document',
+                size: file.size,
+                uploadedAt: new Date().toISOString(),
+                uploadedBy: currentUser.name || 'Pedro Belchior',
+              });
+              resolve();
+            };
+            reader.readAsDataURL(file);
+          });
+        }
+      } catch (err) {
+        console.error('Erro ao otimizar foto:', err);
+      }
+    }
+
+    const updatedAtts = [...attachments, ...newAttachments];
+    setAttachments(updatedAtts);
+    await updateService(service.id, { attachments: updatedAtts });
+    setIsOptimizingPhotos(false);
+    // Reset file input
+    e.target.value = '';
   };
 
-  const handleRemoveAttachment = (attId: string) => {
-    const updated = attachments.filter((a) => a.id !== attId);
-    setAttachments(updated);
-    updateService(service.id, { attachments: updated });
+  const handleRequestDeletePhoto = (att: Attachment) => {
+    if (!canDeletePhoto) {
+      alert('Apenas administradores têm permissão para excluir fotos.');
+      return;
+    }
+    setPhotoToDelete(att);
+  };
+
+  const handleConfirmDeletePhoto = async () => {
+    if (!photoToDelete || !canDeletePhoto) return;
+    setIsDeletingPhoto(true);
+    try {
+      const updated = attachments.filter((a) => a.id !== photoToDelete.id);
+      setAttachments(updated);
+      await updateService(service.id, { attachments: updated });
+      if (previewPhoto?.id === photoToDelete.id) {
+        setPreviewPhoto(null);
+      }
+      setPhotoToDelete(null);
+    } catch (err) {
+      console.error('Erro ao excluir foto:', err);
+    } finally {
+      setIsDeletingPhoto(false);
+    }
   };
 
   const handleDeleteClick = () => {
@@ -893,47 +977,134 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
           {/* TAB 2: PHOTOS & ATTACHMENTS */}
           {activeSubTab === 'photos' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">Fotos do Problema e Comprovantes</span>
-                <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Anexar Foto</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-blue-600" />
+                    Fotos do Problema e Comprovantes
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Otimização com realce de nitidez e compressão inteligente ultraleve.
+                  </span>
+                </div>
+
+                {firebaseUser && canEditServices && (
+                  <div className="flex items-center gap-2">
+                    <label className="cursor-pointer bg-white hover:bg-blue-50 border border-slate-300 hover:border-blue-400 text-slate-700 hover:text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-2xs">
+                      <Upload className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Adicionar Fotos</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-2xs">
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Câmera</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                )}
               </div>
+
+              {/* Progress feedback */}
+              {isOptimizingPhotos && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2 text-xs text-blue-900 font-medium animate-pulse">
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-600 shrink-0" />
+                  <div className="flex-1">
+                    <span>Otimizando e aplicando nitidez em foto {optimizingProgress.current} de {optimizingProgress.total}...</span>
+                  </div>
+                  <span className="text-[10px] bg-blue-200/80 px-2 py-0.5 rounded font-bold text-blue-950">
+                    Processando
+                  </span>
+                </div>
+              )}
 
               {attachments.length === 0 ? (
                 <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 text-slate-400">
                   <FileImage className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-xs">Nenhuma foto anexada a este serviço.</p>
+                  <p className="text-xs font-medium">Nenhuma foto anexada a este serviço.</p>
+                  {firebaseUser && canEditServices && (
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Use os botões acima para fotografar ou selecionar fotos da galeria.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {attachments.map((att) => (
                     <div
                       key={att.id}
-                      className="group relative rounded-xl border border-slate-200 overflow-hidden shadow-xs bg-slate-50 aspect-video"
+                      className="group relative rounded-xl border border-slate-200 overflow-hidden shadow-2xs bg-white flex flex-col hover:shadow-md transition"
                     >
-                      <img
-                        src={att.url}
-                        alt={att.name}
-                        className="w-full h-full object-cover cursor-pointer"
-                        onClick={() => setPreviewImage(att.url)}
-                      />
-                      {firebaseUser && canEditServices && (
-                        <button
-                          onClick={() => handleRemoveAttachment(att.id)}
-                          className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <div className="aspect-video relative overflow-hidden bg-slate-100">
+                        <img
+                          src={att.url}
+                          alt={att.name}
+                          className="w-full h-full object-cover cursor-pointer transition duration-200 group-hover:scale-105"
+                          onClick={() => setPreviewPhoto(att)}
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2 pointer-events-none group-hover:pointer-events-auto">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewPhoto(att)}
+                            className="p-1.5 bg-white/90 text-slate-800 rounded-lg hover:bg-white transition cursor-pointer shadow-xs"
+                            title="Visualizar em alta resolução"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          {canDeletePhoto && (
+                            <button
+                              type="button"
+                              onClick={() => handleRequestDeletePhoto(att)}
+                              className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition cursor-pointer shadow-xs"
+                              title="Excluir foto (Apenas Administrador)"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        <span className="absolute top-1.5 left-1.5 bg-slate-900/80 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                          <Zap className="w-2.5 h-2.5 text-amber-400" />
+                          HD
+                        </span>
+                      </div>
+
+                      <div className="p-2 text-[10px] space-y-1 border-t border-slate-100">
+                        <p className="font-semibold text-slate-800 truncate" title={att.name}>
+                          {att.name}
+                        </p>
+                        <div className="flex items-center justify-between text-slate-500">
+                          <span className="font-mono">{formatBytes(att.size || 0)}</span>
+                          {att.savedPercentage ? (
+                            <span className="text-emerald-700 font-bold bg-emerald-50 px-1 rounded">
+                              -{att.savedPercentage}%
+                            </span>
+                          ) : null}
+                        </div>
+                        {canDeletePhoto && (
+                          <button
+                            type="button"
+                            onClick={() => handleRequestDeletePhoto(att)}
+                            className="w-full mt-1.5 py-1 px-2 bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 border border-red-200 rounded-md font-semibold text-[10px] flex items-center justify-center gap-1.5 transition cursor-pointer"
+                            title="Excluir foto do serviço (Exclusivo ADM)"
+                          >
+                            <Trash2 className="w-3 h-3 text-red-600 shrink-0" />
+                            <span>Excluir Foto</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1113,7 +1284,79 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
       </div>
     </div>
 
-    {/* Confirm Deletion Modal */}
+    {/* Lightbox / Zoom Preview Modal */}
+    {previewPhoto && (
+      <div
+        className="fixed inset-0 z-70 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150"
+        onClick={() => setPreviewPhoto(null)}
+      >
+        <div
+          className="relative max-w-4xl max-h-[90vh] w-full flex flex-col bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Lightbox Header */}
+          <div className="p-3 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between text-white text-xs">
+            <div className="flex items-center gap-2 truncate pr-2">
+              <FileImage className="w-4 h-4 text-blue-400 shrink-0" />
+              <span className="font-semibold truncate">{previewPhoto.name}</span>
+              <span className="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded font-mono">
+                {formatBytes(previewPhoto.size || 0)}
+              </span>
+              {previewPhoto.savedPercentage ? (
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-bold">
+                  -{previewPhoto.savedPercentage}% espaço economizado
+                </span>
+              ) : null}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <a
+                href={previewPhoto.url}
+                download={previewPhoto.name}
+                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition"
+                title="Baixar foto"
+              >
+                <Download className="w-4 h-4" />
+              </a>
+              {canDeletePhoto && (
+                <button
+                  type="button"
+                  onClick={() => handleRequestDeletePhoto(previewPhoto)}
+                  className="p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg transition cursor-pointer flex items-center gap-1 text-[11px] font-bold px-2.5 shadow-xs"
+                  title="Excluir esta foto permanentemente (ADM)"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Excluir</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Lightbox Image Stage */}
+          <div className="flex-1 overflow-auto p-2 sm:p-4 flex items-center justify-center bg-black/60 min-h-[300px]">
+            <img
+              src={previewPhoto.url}
+              alt={previewPhoto.name}
+              className="max-h-[75vh] w-auto max-w-full object-contain rounded-lg shadow-lg select-none"
+            />
+          </div>
+
+          <div className="p-2 bg-slate-900 border-t border-slate-800 text-[11px] text-slate-400 text-center flex items-center justify-between px-4">
+            <span>Foto nítida em alta resolução</span>
+            <span className="text-[10px] text-slate-500">Clique fora ou em fechar para voltar</span>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Confirm Service Deletion Modal */}
     <ConfirmModal
       isOpen={isConfirmDeleteOpen}
       title="Excluir Serviço / Problema"
@@ -1124,6 +1367,19 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
       isLoading={isDeleting}
       onConfirm={handleConfirmDelete}
       onCancel={() => setIsConfirmDeleteOpen(false)}
+    />
+
+    {/* Confirm Photo Deletion Modal (Exclusivo ADM) */}
+    <ConfirmModal
+      isOpen={Boolean(photoToDelete)}
+      title="Excluir Foto"
+      message={`Tem certeza que deseja excluir permanentemente a foto "${photoToDelete?.name}" deste serviço? Esta ação não pode ser desfeita e é restrita a Administradores.`}
+      confirmLabel="Sim, Excluir Foto"
+      cancelLabel="Cancelar"
+      confirmVariant="danger"
+      isLoading={isDeletingPhoto}
+      onConfirm={handleConfirmDeletePhoto}
+      onCancel={() => setPhotoToDelete(null)}
     />
   </>
   );

@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="50%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f1f5f9"/>
+    </linearGradient>
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background Base with Squircle Corners -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+
+  <!-- Subtle Blueprint Grid Pattern -->
+  <path d="M 0 128 L 512 128 M 0 256 L 512 256 M 0 384 L 512 384 M 128 0 L 128 512 M 256 0 L 256 512 M 384 0 L 384 512" stroke="#ffffff" stroke-opacity="0.06" stroke-width="2"/>
+
+  <!-- Central Emblem Container with Shadow -->
+  <g filter="url(#dropShadow)">
+    <!-- Shield / Hall Foundation -->
+    <path d="M 256 80 L 384 140 L 384 270 C 384 355 256 420 256 420 C 256 420 128 355 128 270 L 128 140 Z" fill="url(#shieldGrad)" />
+    
+    <!-- Outer Shield Border Accent -->
+    <path d="M 256 80 L 384 140 L 384 270 C 384 355 256 420 256 420 C 256 420 128 355 128 270 L 128 140 Z" fill="none" stroke="url(#accentGrad)" stroke-width="8" stroke-linejoin="round"/>
+
+    <!-- Kingdom Hall Architecture Lines (Stylized Roof & Portico) -->
+    <path d="M 168 200 L 256 135 L 344 200" fill="none" stroke="#1e3a8a" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="188" y="208" width="136" height="72" rx="6" fill="#e2e8f0" stroke="#1e3a8a" stroke-width="8"/>
+    
+    <!-- Entrance Doors & Windows -->
+    <rect x="236" y="232" width="40" height="48" rx="3" fill="#1e3a8a"/>
+    <circle cx="212" cy="235" r="10" fill="#3b82f6"/>
+    <circle cx="300" cy="235" r="10" fill="#3b82f6"/>
+
+    <!-- Crossed Maintenance Tools (Wrench & Hammer / Spark) Badge -->
+    <g transform="translate(256, 335) scale(0.95)">
+      <!-- Golden Tool Circle Base -->
+      <circle cx="0" cy="0" r="46" fill="url(#accentGrad)" stroke="#ffffff" stroke-width="6"/>
+      
+      <!-- Wrench Icon -->
+      <path d="M -16 -16 L -26 -6 C -29 -3 -29 2 -26 5 L 8 39 C 11 42 16 42 19 39 L 26 32 C 29 29 29 24 26 21 L -8 -13 C -5 -16 -5 -21 -8 -24 L -16 -16 Z" fill="#1e293b"/>
+      <path d="M -15 -25 C -23 -27 -31 -22 -33 -14 C -34 -8 -30 -3 -25 -1 L -15 -11 L -9 -5 L -1 -15 C -3 -20 -8 -24 -15 -25 Z" fill="#0f172a"/>
+      
+      <!-- Checkmark / Sparkle of Excellence -->
+      <path d="M -8 2 L -1 9 L 14 -6" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+
+  <!-- High-Tech Glow Arc -->
+  <path d="M 96 460 C 180 488 332 488 416 460" stroke="#38bdf8" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8"/>
+</svg>

@@ -9,6 +9,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Smartphone,
   Sparkles,
   UserCheck,
   UserPlus,
@@ -16,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { useMaintenance } from '../context/MaintenanceContext';
+import { usePWAInstall } from '../pwa';
 import { exportServicesToExcel, exportServicesToPDF } from '../utils/export';
 
 interface HeaderProps {
@@ -47,6 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
     isAdmin,
   } = useMaintenance();
 
+  const { canInstall, isInstalled, promptInstall } = usePWAInstall();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   const getPageTitle = () => {
@@ -229,7 +232,18 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         {/* Export Quick Menu */}
-        <div className="hidden lg:flex items-center">
+        <div className="hidden lg:flex items-center gap-1.5">
+          {(!isInstalled && canInstall) && (
+            <button
+              id="btn-header-install-pwa"
+              title="Instalar aplicativo no computador ou celular"
+              onClick={() => promptInstall()}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 text-xs font-bold transition cursor-pointer"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Instalar App</span>
+            </button>
+          )}
           <button
             id="btn-quick-export-pdf"
             title="Exportar Relatório em PDF"

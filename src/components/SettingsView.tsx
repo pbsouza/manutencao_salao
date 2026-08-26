@@ -15,7 +15,9 @@ import {
   Plus,
   RefreshCw,
   RotateCcw,
+  Share,
   Shield,
+  Smartphone,
   Sparkles,
   Upload,
   User,
@@ -24,6 +26,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useMaintenance } from '../context/MaintenanceContext';
+import { usePWAInstall } from '../pwa';
 import { exportServicesToExcel } from '../utils/export';
 import { ConfirmModal } from './ConfirmModal';
 
@@ -49,6 +52,7 @@ export const SettingsView: React.FC = () => {
     importSpreadsheetFile,
   } = useMaintenance();
 
+  const { canInstall, isInstalled, isIOS, promptInstall } = usePWAInstall();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
@@ -214,6 +218,84 @@ export const SettingsView: React.FC = () => {
             Você está navegando em modo local. Faça login com sua Conta Google ou com Usuário/Senha cadastrado para sincronização em nuvem e permissões por perfil.
           </p>
         )}
+      </div>
+
+      {/* Progressive Web App (PWA) Card */}
+      <div className="bg-white border border-gray-200 p-4 rounded-lg space-y-3 shadow-2xs">
+        <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+          <div className="flex items-center gap-2 text-xs font-bold text-gray-900 uppercase tracking-tight">
+            <Smartphone className="w-4 h-4 text-blue-600" />
+            <span>Aplicativo Web Progressivo (PWA) & Instalação</span>
+          </div>
+
+          <span className={`px-2 py-0.5 rounded font-bold text-[10px] uppercase ${
+            isInstalled
+              ? 'bg-emerald-100 text-emerald-800'
+              : 'bg-blue-100 text-blue-800'
+          }`}>
+            {isInstalled ? 'App Instalado' : 'Pronto para Instalar'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+          <div className="space-y-2">
+            <p className="text-xs text-gray-600">
+              O <strong>Manutenção Salão do Reino</strong> é um PWA completo. Você pode instalá-lo diretamente no Google Chrome, Edge, celulares Android e iPhone para abrir como aplicativo nativo, com tela cheia, ícone personalizado e carregamento instantâneo.
+            </p>
+            <div className="flex flex-wrap gap-2 text-[11px] text-gray-500">
+              <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Ícone 512px HD
+              </span>
+              <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Cache Offline
+              </span>
+              <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Modo Standalone
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 p-3.5 rounded-lg border border-gray-200 space-y-2.5">
+            <div className="text-xs font-bold text-gray-800 flex items-center justify-between">
+              <span>Como Instalar no seu Dispositivo:</span>
+              <span className="text-[10px] text-gray-500 font-normal">Google Chrome / Safari</span>
+            </div>
+
+            {canInstall ? (
+              <button
+                type="button"
+                onClick={() => promptInstall()}
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Instalar Agora no Google Chrome</span>
+              </button>
+            ) : isInstalled ? (
+              <div className="p-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-medium flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Aplicativo já está instalado e rodando em modo nativo!</span>
+              </div>
+            ) : isIOS ? (
+              <div className="text-xs text-gray-600 space-y-1">
+                <p className="font-semibold text-gray-800 flex items-center gap-1">
+                  <Share className="w-3.5 h-3.5 text-blue-600" /> No iPhone/iPad (Safari):
+                </p>
+                <p className="text-[11px]">
+                  Toque no botão de <strong>Compartilhar</strong> e selecione <strong>"Adicionar à Tela de Início"</strong>.
+                </p>
+              </div>
+            ) : (
+              <div className="text-xs text-gray-600 space-y-1">
+                <p className="font-semibold text-gray-800">
+                  No Google Chrome (Computador ou Android):
+                </p>
+                <p className="text-[11px]">
+                  Clique nos <strong>3 pontinhos (⋮)</strong> no canto superior direito do Chrome e selecione <strong>"Instalar aplicativo"</strong> ou no ícone de monitor na barra de endereço.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Pre-fixed Problem Templates & Bulk Assignment Card */}

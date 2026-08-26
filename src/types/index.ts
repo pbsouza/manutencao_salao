@@ -102,6 +102,10 @@ export interface Attachment {
   url: string; // base64 or storage url
   type: 'image' | 'pdf' | 'document' | 'video';
   size?: number;
+  originalSize?: number;
+  width?: number;
+  height?: number;
+  savedPercentage?: number;
   uploadedAt: string;
   uploadedBy: string;
 }

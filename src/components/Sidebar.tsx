@@ -5,6 +5,7 @@ import {
   Building2,
   ChevronDown,
   DollarSign,
+  Download,
   FileText,
   HardHat,
   LayoutDashboard,
@@ -15,6 +16,7 @@ import {
   Settings,
   Shield,
   ShieldCheck,
+  Smartphone,
   Tag,
   Trello,
   User,
@@ -23,6 +25,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useMaintenance } from '../context/MaintenanceContext';
+import { usePWAInstall } from '../pwa';
 import { isOverdue } from '../utils/priority';
 
 interface SidebarProps {
@@ -49,6 +52,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
     isUserApproved,
     isAdmin,
   } = useMaintenance();
+
+  const { canInstall, isInstalled, promptInstall } = usePWAInstall();
 
   const myTasksCount = services.filter((s) => {
     const currentName = currentUser.name.toLowerCase().trim();
@@ -301,6 +306,38 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
               </div>
             </div>
           </div>
+
+          {/* PWA App Installation Button */}
+          {!isInstalled && (
+            <div className="px-3 pt-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (canInstall) {
+                    await promptInstall();
+                  } else {
+                    alert('Para instalar no Chrome: toque nos 3 pontinhos (⋮) no topo do navegador e selecione "Instalar aplicativo" ou "Adicionar à tela inicial".');
+                  }
+                }}
+                className="w-full flex items-center justify-between p-2 bg-gradient-to-r from-blue-900/60 to-indigo-900/60 hover:from-blue-800/80 hover:to-indigo-800/80 border border-blue-500/30 rounded-lg text-white transition cursor-pointer text-left group"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="p-1.5 bg-blue-600 rounded-md shrink-0 text-white shadow-xs">
+                    <Smartphone className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-bold text-white group-hover:text-blue-200 flex items-center gap-1 truncate">
+                      <span>Instalar como App</span>
+                    </div>
+                    <div className="text-[9px] text-gray-300 truncate">
+                      Acesso rápido e offline
+                    </div>
+                  </div>
+                </div>
+                <Download className="w-3.5 h-3.5 text-blue-400 shrink-0 ml-1" />
+              </button>
+            </div>
+          )}
         </nav>
 
         {/* User Role Profile Switcher & Auth status */}

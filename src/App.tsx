@@ -19,6 +19,7 @@ import { ServiceDetailModal } from './components/ServiceDetailModal';
 import { SettingsView } from './components/SettingsView';
 import { Sidebar } from './components/Sidebar';
 import { UserManagementModal } from './components/UserManagementModal';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { MaintenanceProvider, useMaintenance } from './context/MaintenanceContext';
 
 const MainAppContent: React.FC = () => {
@@ -124,6 +125,7 @@ const MainAppContent: React.FC = () => {
       <UserManagementModal />
       <ProblemTemplatesModal />
       <BatchAssignModal />
+      <PWAInstallBanner />
     </div>
   );
 };
