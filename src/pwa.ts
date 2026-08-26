@@ -16,11 +16,8 @@ const installListeners = new Set<(canInstall: boolean) => void>();
 export function registerServiceWorker() {
   if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      // Use relative sw.js URL based on current page path for GitHub Pages / subpaths
-      const swUrl = new URL('sw.js', window.location.href).href;
-
       navigator.serviceWorker
-        .register(swUrl)
+        .register('/sw.js')
         .then((reg) => {
           // Check for updates periodically
           reg.onupdatefound = () => {

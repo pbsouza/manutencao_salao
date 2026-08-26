@@ -1,53 +1,31 @@
-const CACHE_NAME = 'manutencao-sr-pwa-v2';
-
-// Get base path from ServiceWorker registration scope (e.g. '/manutencao_salao/' or '/')
-const getScopePath = () => {
-  try {
-    const scopeUrl = new URL(self.registration.scope);
-    return scopeUrl.pathname.endsWith('/') ? scopeUrl.pathname : scopeUrl.pathname + '/';
-  } catch (e) {
-    return './';
-  }
-};
-
-const BASE_PATH = getScopePath();
-
+const CACHE_NAME = 'manutencao-sr-pwa-v1';
 const STATIC_ASSETS = [
-  BASE_PATH,
-  `${BASE_PATH}index.html`,
-  `${BASE_PATH}manifest.json`,
-  `${BASE_PATH}favicon.svg`,
-  `${BASE_PATH}favicon.png`,
-  `${BASE_PATH}icon.svg`,
-  `${BASE_PATH}icon-192.png`,
-  `${BASE_PATH}icon-512.png`,
-  `${BASE_PATH}icon-maskable-512.png`,
-  `${BASE_PATH}apple-touch-icon.png`
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/favicon.svg',
+  '/favicon.png',
+  '/icon.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-512.png',
+  '/apple-touch-icon.png'
 ];
 
 // Install Event - Pre-cache core shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // Add assets individually so one failure does not break the whole cache
-      return Promise.allSettled(
-        STATIC_ASSETS.map((assetUrl) =>
-          fetch(assetUrl).then((response) => {
-            if (response.ok) {
-              return cache.put(assetUrl, response);
-            }
-          }).catch((err) => {
-            console.warn('Non-fatal asset cache skip:', assetUrl, err);
-          })
-        )
-      );
+      return cache.addAll(STATIC_ASSETS).catch((err) => {
+        console.warn('PWA Pre-cache non-fatal error:', err);
+      });
     }).then(() => {
       return self.skipWaiting();
     })
   );
 });
 
-// Activate Event - Clean old caches and claim clients
+// Activate Event - Clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -68,7 +46,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Skip non-GET requests, Chrome extensions, and Google/Firebase APIs
+  // Skip non-GET requests, Chrome extension calls, and Firestore / Google APIs
   if (
     event.request.method !== 'GET' ||
     url.protocol.startsWith('chrome-extension') ||
@@ -81,7 +59,30 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation requests (HTML / SPA route) -> Network First with fallback to index.html
+  // Static Assets (Icons, fonts, images, css, js) -> Cache First, fallback to Network
+  if (
+    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|ico|woff2|woff|ttf|css|js)$/) ||
+    STATIC_ASSETS.includes(url.pathname)
+  ) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        }).catch(() => {
+          // Return cached fallback if offline
+          return caches.match('/index.html');
+        });
+      })
+    );
+    return;
+  }
+
+  // Navigation requests (HTML) -> Network First with Cache Fallback
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
@@ -94,31 +95,9 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           return caches.match(event.request).then((cached) => {
-            return cached || caches.match(`${BASE_PATH}index.html`) || caches.match(BASE_PATH);
+            return cached || caches.match('/index.html');
           });
         })
-    );
-    return;
-  }
-
-  // Static Assets (Icons, fonts, images, css, js) -> Cache First, fallback to Network
-  if (
-    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|ico|woff2|woff|ttf|css|js)$/) ||
-    STATIC_ASSETS.some((asset) => url.pathname.endsWith(asset) || url.href.endsWith(asset))
-  ) {
-    event.respondWith(
-      caches.match(event.request).then((cached) => {
-        if (cached) return cached;
-        return fetch(event.request).then((response) => {
-          if (response && response.status === 200) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          }
-          return response;
-        }).catch(() => {
-          return caches.match(`${BASE_PATH}index.html`);
-        });
-      })
     );
     return;
   }
