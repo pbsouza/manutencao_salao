@@ -27,6 +27,7 @@ import {
 import { useMaintenance } from '../context/MaintenanceContext';
 import { usePWAInstall } from '../pwa';
 import { isOverdue } from '../utils/priority';
+import { AppLogo } from './AppLogo';
 
 interface SidebarProps {
   mobileOpen?: boolean;
@@ -140,9 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
         {/* Brand Header */}
         <div className="p-4 border-b border-gray-700 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-xs shadow-xs">
-              SR
-            </div>
+            <AppLogo className="w-9 h-9" />
             <div>
               <span className="text-white font-semibold text-sm leading-tight block">
                 Manutenção SR
