@@ -13,16 +13,34 @@ export interface BeforeInstallPromptEvent extends Event {
 let deferredInstallPrompt: BeforeInstallPromptEvent | null = null;
 const installListeners = new Set<(canInstall: boolean) => void>();
 
+// Listen immediately for beforeinstallprompt
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e: Event) => {
+    e.preventDefault();
+    deferredInstallPrompt = e as BeforeInstallPromptEvent;
+    installListeners.forEach((listener) => listener(true));
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    installListeners.forEach((listener) => listener(false));
+    console.log('PWA instalado com sucesso!');
+  });
+}
+
 export function registerServiceWorker() {
   if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      // Use relative sw.js URL based on current page path for GitHub Pages / subpaths
-      const swUrl = new URL('sw.js', window.location.href).href;
+    const register = () => {
+      // Determine service worker URL based on current origin & path
+      const base = window.location.pathname.endsWith('/')
+        ? window.location.pathname
+        : window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+      
+      const swUrl = `${base}sw.js`;
 
       navigator.serviceWorker
-        .register(swUrl)
+        .register(swUrl, { scope: base })
         .then((reg) => {
-          // Check for updates periodically
           reg.onupdatefound = () => {
             const installingWorker = reg.installing;
             if (installingWorker) {
@@ -37,21 +55,13 @@ export function registerServiceWorker() {
         .catch((err) => {
           console.warn('Erro ao registrar Service Worker do PWA:', err);
         });
-    });
+    };
 
-    // Capture beforeinstallprompt event for Chrome / Edge / Android
-    window.addEventListener('beforeinstallprompt', (e: Event) => {
-      e.preventDefault();
-      deferredInstallPrompt = e as BeforeInstallPromptEvent;
-      installListeners.forEach((listener) => listener(true));
-    });
-
-    // Capture appinstalled event
-    window.addEventListener('appinstalled', () => {
-      deferredInstallPrompt = null;
-      installListeners.forEach((listener) => listener(false));
-      console.log('PWA instalado com sucesso!');
-    });
+    if (document.readyState === 'complete') {
+      register();
+    } else {
+      window.addEventListener('load', register);
+    }
   }
 }
 
