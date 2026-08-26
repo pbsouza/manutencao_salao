@@ -2,8 +2,9 @@
   "name": "Manutenção Salão do Reino",
   "short_name": "Manutenção SR",
   "description": "Sistema de Gerenciamento de Manutenção do Salão do Reino",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
+  "id": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0f172a",
@@ -13,25 +14,25 @@
   "categories": ["productivity", "utilities", "business"],
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-maskable-512.png",
+      "src": "icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon.svg",
+      "src": "icon.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any"
@@ -42,15 +43,15 @@
       "name": "Quadro Kanban",
       "short_name": "Kanban",
       "description": "Visualizar serviços em andamento",
-      "url": "/?tab=kanban",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "url": "./?tab=kanban",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Minhas Tarefas",
       "short_name": "Tarefas",
       "description": "Visualizar tarefas atribuídas a mim",
-      "url": "/?tab=my-tasks",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "url": "./?tab=my-tasks",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

@@ -47,7 +47,7 @@ export const PWAInstallBanner: React.FC = () => {
       >
         {/* App Icon */}
         <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 shadow-md border border-blue-400/40">
-          <img src="/icon-192.png" alt="Logo" className="w-7 h-7 object-contain" />
+          <img src="icon-192.png" alt="Logo" className="w-7 h-7 object-contain" />
         </div>
 
         {/* Content */}
@@ -104,7 +104,7 @@ export const PWAInstallBanner: React.FC = () => {
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 shadow-md">
-                  <img src="/icon-192.png" alt="Logo" className="w-7 h-7 object-contain" />
+                  <img src="icon-192.png" alt="Logo" className="w-7 h-7 object-contain" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
