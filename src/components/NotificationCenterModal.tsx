@@ -41,6 +41,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   } = useMaintenance();
 
   const [activeSubTab, setActiveSubTab] = useState<'notifications' | 'settings'>('notifications');
+  const [testSuccess, setTestSuccess] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<string>(() =>
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
   );
@@ -55,6 +56,16 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     if (granted) {
       updateNotificationSettings({ enablePush: true });
     }
+    return granted;
+  };
+
+  const handleSendTest = async () => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      await handleRequestPermission();
+    }
+    await sendTestNotification();
+    setTestSuccess(true);
+    setTimeout(() => setTestSuccess(false), 3500);
   };
 
   const handleNotificationClick = (notif: AppNotification) => {
@@ -208,11 +219,24 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                     Você será avisado quando novas manutenções forem cadastradas ou quando houver tarefas de alta prioridade.
                   </p>
                   <button
-                    onClick={sendTestNotification}
-                    className="mt-4 px-3.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition cursor-pointer inline-flex items-center gap-1.5"
+                    onClick={handleSendTest}
+                    className={`mt-4 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition cursor-pointer inline-flex items-center gap-1.5 shadow-xs ${
+                      testSuccess
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                    <span>Disparar Notificação de Teste</span>
+                    {testSuccess ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Notificação Disparada! 🔔</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 text-blue-200" />
+                        <span>Disparar Notificação de Teste</span>
+                      </>
+                    )}
                   </button>
                 </div>
               ) : (
@@ -367,11 +391,24 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               {/* Test Button */}
               <div className="pt-2">
                 <button
-                  onClick={sendTestNotification}
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                  onClick={handleSendTest}
+                  className={`w-full py-2.5 font-bold rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-2 shadow-sm ${
+                    testSuccess
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
                 >
-                  <BellRing className="w-4 h-4" />
-                  <span>Enviar Notificação de Teste Agora</span>
+                  {testSuccess ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Notificação Enviada com Sucesso! 🔔</span>
+                    </>
+                  ) : (
+                    <>
+                      <BellRing className="w-4 h-4" />
+                      <span>Enviar Notificação de Teste Agora</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

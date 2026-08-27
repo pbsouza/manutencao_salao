@@ -12,6 +12,7 @@ import {
   Search,
   Sparkles,
   Tag,
+  Trash2,
   Wrench,
   Zap,
 } from 'lucide-react';
@@ -30,6 +31,7 @@ export const EquipmentInventoryView: React.FC = () => {
     locations,
     addEquipment,
     updateEquipment,
+    clearAllEquipments,
     hasRestrictedAccess,
   } = useMaintenance();
 
@@ -99,6 +101,12 @@ export const EquipmentInventoryView: React.FC = () => {
       await updateEquipment(editingEquipment.id, data);
     } else {
       await addEquipment(data);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (window.confirm('Tem certeza que deseja apagar TODOS os equipamentos do inventário para recadastrar do zero?')) {
+      await clearAllEquipments();
     }
   };
 
@@ -176,6 +184,17 @@ export const EquipmentInventoryView: React.FC = () => {
             <Download className="w-4 h-4 text-gray-500" />
             <span>Exportar Excel</span>
           </button>
+
+          {hasRestrictedAccess && totalEquipments > 0 && (
+            <button
+              onClick={handleClearAll}
+              className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+              title="Apagar todos os equipamentos para iniciar do zero"
+            >
+              <Trash2 className="w-4 h-4 text-red-500" />
+              <span>Limpar Todos</span>
+            </button>
+          )}
 
           {hasRestrictedAccess && (
             <button

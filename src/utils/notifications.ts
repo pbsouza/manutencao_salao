@@ -52,10 +52,16 @@ export const saveNotificationHistory = (history: AppNotification[]) => {
 // Play a pleasant chime using the Web Audio API
 export const playNotificationSound = () => {
   try {
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
 
     const ctx = new AudioContextClass();
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
     const now = ctx.currentTime;
 
     // Harmonic bell chime: 523.25 Hz (C5) and 659.25 Hz (E5) and 783.99 Hz (G5)
@@ -71,7 +77,7 @@ export const playNotificationSound = () => {
     osc2.frequency.setValueAtTime(659.25, now);
     osc2.frequency.exponentialRampToValueAtTime(1046.5, now + 0.15);
 
-    gainNode.gain.setValueAtTime(0.2, now);
+    gainNode.gain.setValueAtTime(0.25, now);
     gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
 
     osc1.connect(gainNode);
@@ -83,7 +89,7 @@ export const playNotificationSound = () => {
     osc1.stop(now + 0.5);
     osc2.stop(now + 0.5);
   } catch {
-    // Silent fail if AudioContext is not permitted before user gesture
+    // Silent fail if AudioContext is not permitted
   }
 };
 
@@ -104,7 +110,9 @@ export const requestNotificationPermission = async (): Promise<NotificationPermi
   }
 };
 
-export const triggerAppNotification = async (notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>): Promise<AppNotification> => {
+export const triggerAppNotification = async (
+  notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>
+): Promise<AppNotification> => {
   const settings = getNotificationSettings();
   const newNotif: AppNotification = {
     ...notification,
@@ -123,8 +131,26 @@ export const triggerAppNotification = async (notification: Omit<AppNotification,
     playNotificationSound();
   }
 
-  // 3. Trigger Browser Web Notification if allowed
-  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && settings.enablePush) {
+  // 3. Dispatch in-app window event so Toast UI component immediately appears
+  if (typeof window !== 'undefined') {
+    try {
+      window.dispatchEvent(
+        new CustomEvent('sr-notification-event', {
+          detail: newNotif,
+        })
+      );
+    } catch {
+      // ignore
+    }
+  }
+
+  // 4. Trigger Browser Web Notification if allowed
+  if (
+    typeof window !== 'undefined' &&
+    'Notification' in window &&
+    Notification.permission === 'granted' &&
+    settings.enablePush
+  ) {
     try {
       const base = import.meta.env.BASE_URL || '/';
       const iconUrl = `${base}icon-192.png`;

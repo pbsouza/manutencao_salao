@@ -56,7 +56,7 @@ import {
   INITIAL_MONTHLY_BUDGETS,
   INITIAL_PROBLEM_TEMPLATES,
 } from '../data/initialData';
-import { INITIAL_EQUIPMENTS } from '../data/initialEquipments';
+import { INITIAL_EQUIPMENTS, MOCK_EQUIPMENT_IDS } from '../data/initialEquipments';
 import { OFFICIAL_PREVENTIVE_SHEETS } from '../data/preventiveProgramData';
 import {
   DEFAULT_NOTIFICATION_SETTINGS,
@@ -185,6 +185,7 @@ interface MaintenanceContextType {
   addEquipment: (equipment: Omit<EquipmentItem, 'id' | 'createdAt' | 'updatedAt' | 'maintenanceHistory'>) => Promise<EquipmentItem>;
   updateEquipment: (id: string, updates: Partial<EquipmentItem>) => Promise<void>;
   deleteEquipment: (id: string) => Promise<void>;
+  clearAllEquipments: () => Promise<void>;
   addEquipmentMaintenanceLog: (equipmentId: string, log: Omit<EquipmentMaintenanceLog, 'id'>) => Promise<void>;
   getEquipmentByCode: (code: string) => EquipmentItem | undefined;
 
@@ -333,7 +334,7 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     getInitialCachedData<MonthlyBudget[]>('sr_cache_budgets_v6', [])
   );
   const [equipments, setEquipments] = useState<EquipmentItem[]>(() =>
-    getInitialCachedData<EquipmentItem[]>('sr_cache_equipments_v1', INITIAL_EQUIPMENTS)
+    getInitialCachedData<EquipmentItem[]>('sr_cache_equipments_v2', [])
   );
 
   // Notification System State
@@ -666,19 +667,28 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       collection(db, 'equipments'),
       (snap) => {
         if (snap.empty) {
-          INITIAL_EQUIPMENTS.forEach((eq) => {
-            setDoc(doc(db, 'equipments', eq.id), eq).catch(console.error);
-          });
-          setEquipments(INITIAL_EQUIPMENTS);
-          saveToLocalStorage('sr_cache_equipments_v1', INITIAL_EQUIPMENTS);
+          setEquipments([]);
+          saveToLocalStorage('sr_cache_equipments_v2', []);
           return;
         }
-        const items = snap.docs.map((docSnap) => ({
-          ...(docSnap.data() as EquipmentItem),
-          id: docSnap.id,
-        }));
+
+        // Purge any legacy mock equipments if they exist in Firestore
+        const mockDocs = snap.docs.filter((docSnap) => MOCK_EQUIPMENT_IDS.includes(docSnap.id));
+        if (mockDocs.length > 0) {
+          mockDocs.forEach((docSnap) => {
+            deleteDoc(doc(db, 'equipments', docSnap.id)).catch(console.error);
+          });
+        }
+
+        const items = snap.docs
+          .filter((docSnap) => !MOCK_EQUIPMENT_IDS.includes(docSnap.id))
+          .map((docSnap) => ({
+            ...(docSnap.data() as EquipmentItem),
+            id: docSnap.id,
+          }));
+
         setEquipments(items);
-        saveToLocalStorage('sr_cache_equipments_v1', items);
+        saveToLocalStorage('sr_cache_equipments_v2', items);
       },
       (err) => console.error('Firestore equipments listener error:', err)
     );
@@ -1856,6 +1866,20 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   };
 
+  const clearAllEquipments = async () => {
+    const currentList = [...equipments];
+    setEquipments([]);
+    saveToLocalStorage('sr_cache_equipments_v2', []);
+
+    try {
+      for (const eq of currentList) {
+        await deleteDoc(doc(db, 'equipments', eq.id));
+      }
+    } catch (err) {
+      console.error('Erro ao limpar equipamentos:', err);
+    }
+  };
+
   const addEquipmentMaintenanceLog = async (
     equipmentId: string,
     log: Omit<EquipmentMaintenanceLog, 'id'>
@@ -2080,6 +2104,7 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         addEquipment,
         updateEquipment,
         deleteEquipment,
+        clearAllEquipments,
         addEquipmentMaintenanceLog,
         getEquipmentByCode,
 

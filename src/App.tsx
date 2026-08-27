@@ -23,6 +23,7 @@ import { SettingsView } from './components/SettingsView';
 import { Sidebar } from './components/Sidebar';
 import { UserManagementModal } from './components/UserManagementModal';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
+import { NotificationToast } from './components/NotificationToast';
 import { MaintenanceProvider, useMaintenance } from './context/MaintenanceContext';
 
 const MainAppContent: React.FC = () => {
@@ -132,6 +133,7 @@ const MainAppContent: React.FC = () => {
       <ProblemTemplatesModal />
       <BatchAssignModal />
       <NotificationCenterModal />
+      <NotificationToast />
       <PWAInstallBanner />
     </div>
   );
