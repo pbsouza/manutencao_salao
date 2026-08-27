@@ -5,12 +5,15 @@ import { BottomNavBar } from './components/BottomNavBar';
 import { BudgetView } from './components/BudgetView';
 import { CategoriesView } from './components/CategoriesView';
 import { DashboardView } from './components/DashboardView';
+import { EquipmentInventoryView } from './components/EquipmentInventoryView';
 import { FilterBar } from './components/FilterBar';
 import { Header } from './components/Header';
 import { KanbanBoard } from './components/KanbanBoard';
 import { LocationsView } from './components/LocationsView';
 import { MyTasksView } from './components/MyTasksView';
 import { NewServiceModal } from './components/NewServiceModal';
+import { NotificationCenterModal } from './components/NotificationCenterModal';
+import { PreventiveScheduleView } from './components/PreventiveScheduleView';
 import { ProblemTemplatesModal } from './components/ProblemTemplatesModal';
 import { ReportsView } from './components/ReportsView';
 import { ResponsiblesView } from './components/ResponsiblesView';
@@ -40,17 +43,18 @@ const MainAppContent: React.FC = () => {
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
 
-  // Sem liberação do ADM, mesmo logado, aparece somente a área pública (dashboard e kanban)
+  // Sem liberação do ADM, mesmo logado, aparece somente a área pública (dashboard, kanban e preventivas)
   const isPublic = !hasRestrictedAccess;
-  const currentActiveTab = isPublic && activeTab !== 'dashboard' && activeTab !== 'kanban'
+  const isPublicAllowedTab = activeTab === 'dashboard' || activeTab === 'kanban' || activeTab === 'preventive';
+  const currentActiveTab = isPublic && !isPublicAllowedTab
     ? 'dashboard'
     : activeTab;
 
   React.useEffect(() => {
-    if (isPublic && activeTab !== 'dashboard' && activeTab !== 'kanban') {
+    if (isPublic && !isPublicAllowedTab) {
       setActiveTab('dashboard');
     }
-  }, [isPublic, activeTab, setActiveTab]);
+  }, [isPublic, isPublicAllowedTab, setActiveTab]);
 
   return (
     <div id="main-app-root" className="flex h-screen bg-gray-50 text-gray-900 font-sans overflow-hidden select-none">
@@ -102,6 +106,8 @@ const MainAppContent: React.FC = () => {
             />
           )}
           {currentActiveTab === 'dashboard' && <DashboardView />}
+          {currentActiveTab === 'preventive' && <PreventiveScheduleView />}
+          {!isPublic && currentActiveTab === 'equipments' && <EquipmentInventoryView />}
           {!isPublic && currentActiveTab === 'mytasks' && (
             <MyTasksView onSelectService={(service) => selectService(service)} />
           )}
@@ -125,6 +131,7 @@ const MainAppContent: React.FC = () => {
       <UserManagementModal />
       <ProblemTemplatesModal />
       <BatchAssignModal />
+      <NotificationCenterModal />
       <PWAInstallBanner />
     </div>
   );

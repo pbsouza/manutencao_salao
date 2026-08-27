@@ -57,12 +57,28 @@
         "planned": { "type": "number" },
         "spent": { "type": "number" }
       }
+    },
+    "Equipment": {
+      "title": "Equipment",
+      "description": "Equipamento e patrimônio do Salão do Reino",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "location": { "type": "string" },
+        "status": { "type": "string" }
+      }
     }
   },
   "firestore": {
     "/services/{serviceId}": {
       "schema": { "$ref": "#/entities/Service" },
       "description": "Coleção de ordens de serviço"
+    },
+    "/equipments/{equipmentId}": {
+      "schema": { "$ref": "#/entities/Equipment" },
+      "description": "Coleção de equipamentos e inventário patrimonial"
     },
     "/members/{memberId}": {
       "schema": { "$ref": "#/entities/Member" },

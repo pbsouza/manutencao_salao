@@ -130,3 +130,60 @@ self.addEventListener('fetch', (event) => {
     fetch(event.request).catch(() => caches.match(event.request))
   );
 });
+
+// Push Notification Event Listener (Web Push)
+self.addEventListener('push', (event) => {
+  let data = {
+    title: 'Manutenção Salão do Reino 🛠️',
+    body: 'Nova atualização de serviço ou manutenção preventiva agendada.',
+    icon: `${BASE_PATH}icon-192.png`,
+    badge: `${BASE_PATH}favicon.png`,
+    data: { url: BASE_PATH },
+  };
+
+  if (event.data) {
+    try {
+      const payload = event.data.json();
+      data = {
+        ...data,
+        ...payload,
+        icon: payload.icon || `${BASE_PATH}icon-192.png`,
+        badge: payload.badge || `${BASE_PATH}favicon.png`,
+      };
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon,
+    badge: data.badge,
+    vibrate: [100, 50, 100],
+    data: data.data || { url: BASE_PATH },
+    tag: data.tag || 'sr-maintenance-push',
+    renotify: true,
+  };
+
+  event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+// Notification Click Event Listener - Focus app or open tab
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const targetUrl = (event.notification.data && event.notification.data.url) || BASE_PATH;
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});

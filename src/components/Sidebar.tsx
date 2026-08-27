@@ -1,9 +1,12 @@
 import React from 'react';
 import {
   AlertTriangle,
+  Bell,
   BookOpen,
   Building2,
+  CalendarCheck,
   ChevronDown,
+  Cpu,
   DollarSign,
   Download,
   FileText,
@@ -13,6 +16,7 @@ import {
   LogOut,
   MapPin,
   Plus,
+  QrCode,
   Settings,
   Shield,
   ShieldCheck,
@@ -42,9 +46,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
     openProblemTemplatesModal,
     openUserManagementModal,
     setIsAuthModalOpen,
+    setIsNotificationCenterOpen,
+    unreadNotificationsCount,
     logout,
     firebaseUser,
     services,
+    equipments,
     currentUser,
     setCurrentUser,
     problemTemplates,
@@ -89,6 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
           icon: Trello,
           badge: services.filter((s) => s.status !== 'CONCLUÍDO' && s.status !== 'CANCELADO').length,
         },
+        { id: 'preventive', label: 'Preventivas 06/26', icon: CalendarCheck, badge: 'Oficial', badgeColor: 'bg-amber-800 text-amber-200' },
       ]
     : [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: null },
@@ -104,6 +112,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
           icon: User,
           badge: myTasksCount > 0 ? myTasksCount : null,
           badgeColor: 'bg-blue-600 text-white',
+        },
+        {
+          id: 'preventive',
+          label: 'Preventivas (06/26)',
+          icon: CalendarCheck,
+          badge: 'Oficial',
+          badgeColor: 'bg-amber-800 text-amber-200',
+        },
+        {
+          id: 'equipments',
+          label: 'Patrimônio & Equipamentos',
+          icon: Cpu,
+          badge: equipments?.length || null,
+          badgeColor: 'bg-emerald-800 text-emerald-200',
         },
         { id: 'categories', label: 'Categorias', icon: Tag, badge: null },
       ];

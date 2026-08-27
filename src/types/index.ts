@@ -183,6 +183,11 @@ export interface ServiceItem {
   safetyConfirmedBy?: string;
   safetyConfirmedAt?: string;
   
+  // Linked Equipment / Patrimônio
+  equipmentId?: string;
+  equipmentCode?: string;
+  equipmentName?: string;
+  
   // Notes & Attachments
   notes: string;
   attachments: Attachment[];
@@ -190,6 +195,84 @@ export interface ServiceItem {
   
   createdAt: string;
   updatedAt: string;
+}
+
+export type EquipmentStatus = 'OPERACIONAL' | 'EM MANUTENÇÃO' | 'REQUER INSPEÇÃO' | 'DESATIVADO';
+
+export interface EquipmentMaintenanceLog {
+  id: string;
+  date: string; // YYYY-MM-DD
+  type: 'PREVENTIVA' | 'CORRETIVA' | 'INSPEÇÃO' | 'INSTALAÇÃO';
+  description: string;
+  performedBy: string;
+  cost?: number;
+  serviceId?: string; // Link to Kanban card if created
+  serviceCode?: string;
+}
+
+export interface EquipmentItem {
+  id: string;
+  code: string; // e.g. EQ-AC-001, EQ-SOM-001
+  name: string;
+  category: string;
+  location: string;
+  brand: string;
+  model: string;
+  serialNumber?: string;
+  voltage?: '110V' | '220V' | 'Bivolt' | 'Trifásico' | 'Bateria / Pilha' | 'Manual / Não elétrico';
+  powerRating?: string; // e.g. 24.000 BTU, 1 CV, 500W
+  installDate: string; // YYYY-MM-DD
+  warrantyExpiry?: string; // YYYY-MM-DD
+  status: EquipmentStatus;
+  lastMaintenanceDate?: string;
+  nextPreventiveDate?: string;
+  estimatedValue?: number;
+  responsibleName?: string;
+  notes?: string;
+  qrCodeData?: string;
+  photos?: string[];
+  maintenanceHistory: EquipmentMaintenanceLog[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type PreventiveEventPeriod = 'PRE_CELEBRACAO' | 'JUNHO' | 'POS_CONGRESSO' | 'BIENAL_TM';
+
+export interface PreventiveWorkSheet {
+  id: string;
+  title: string;
+  eventPeriod: PreventiveEventPeriod;
+  periodLabel: string; // "Fevereiro a Março", "Junho", "Setembro a Outubro", "A cada 1 a 2 anos (TM)"
+  category: string;
+  description: string;
+  guidelines: string[];
+  safetyInstructions?: string[];
+  requiresTM?: boolean;
+  isHighRisk?: boolean;
+  requiresDC85?: boolean; // Form DC-85 com 15 dias de antecedência para alto risco
+  evaluationNote?: string;
+  frequency: '3x ao ano' | '2x ao ano' | 'Anual' | 'A cada 1 ou 2 anos (TM)';
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  body: string;
+  type: 'GUT_ALERT' | 'ASSIGNMENT' | 'DUE_DATE' | 'PREVENTIVE' | 'SYSTEM';
+  timestamp: string;
+  read: boolean;
+  linkTab?: string;
+  serviceId?: string;
+  equipmentId?: string;
+}
+
+export interface NotificationSettings {
+  enablePush: boolean;
+  alertHighGUT: boolean;
+  alertAssignments: boolean;
+  alertDueDate: boolean;
+  alertPreventiveProgram: boolean;
+  soundEnabled: boolean;
 }
 
 export interface LocationItem {

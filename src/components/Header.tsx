@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import {
+  Bell,
   BookOpen,
+  CalendarCheck,
+  Cpu,
   Download,
   Filter,
   Layers,
@@ -40,6 +43,8 @@ export const Header: React.FC<HeaderProps> = ({
     openProblemTemplatesModal,
     openBatchAssignModal,
     setIsAuthModalOpen,
+    setIsNotificationCenterOpen,
+    unreadNotificationsCount,
     currentUser,
     firebaseUser,
     services,
@@ -60,6 +65,10 @@ export const Header: React.FC<HeaderProps> = ({
         return 'Quadro Kanban';
       case 'mytasks':
         return 'Minhas Tarefas';
+      case 'preventive':
+        return 'Preventivas 06/26';
+      case 'equipments':
+        return 'Patrimônio & QR';
       case 'categories':
         return 'Categorias';
       case 'responsibles':
@@ -85,6 +94,10 @@ export const Header: React.FC<HeaderProps> = ({
         return 'Quadro de Manutenção & Reparos';
       case 'mytasks':
         return 'Minhas Tarefas Designadas';
+      case 'preventive':
+        return 'Programa Oficial de Manutenção Preventiva (06/26)';
+      case 'equipments':
+        return 'Inventário de Equipamentos, Patrimônio & QR Code';
       case 'categories':
         return 'Categorias e Soluções';
       case 'responsibles':
@@ -253,6 +266,22 @@ export const Header: React.FC<HeaderProps> = ({
             <Download className="w-3.5 h-3.5" />
           </button>
         </div>
+
+        {/* Notifications Trigger Button */}
+        <button
+          id="btn-header-notifications"
+          onClick={() => setIsNotificationCenterOpen(true)}
+          className="relative p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 transition-colors cursor-pointer border border-gray-200"
+          title="Central de Notificações PWA"
+          aria-label="Abrir notificações"
+        >
+          <Bell className="w-4 h-4" />
+          {unreadNotificationsCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-600 text-white font-extrabold text-[9px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center shadow-xs animate-pulse">
+              {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+            </span>
+          )}
+        </button>
 
         {/* Auth / Login Status Button */}
         {!firebaseUser ? (

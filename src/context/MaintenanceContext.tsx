@@ -21,13 +21,19 @@ import {
 } from '../lib/firebase';
 import { cleanFirestoreData } from '../utils/cleanData';
 import {
+  AppNotification,
   BatchAssignPayload,
   CategoryItem,
+  EquipmentItem,
+  EquipmentMaintenanceLog,
   FilterState,
   HistoryEvent,
   LocationItem,
   MonthName,
   MonthlyBudget,
+  NotificationSettings,
+  PreventiveEventPeriod,
+  PreventiveWorkSheet,
   ProblemTemplate,
   RiskLevel,
   ServiceItem,
@@ -50,14 +56,28 @@ import {
   INITIAL_MONTHLY_BUDGETS,
   INITIAL_PROBLEM_TEMPLATES,
 } from '../data/initialData';
+import { INITIAL_EQUIPMENTS } from '../data/initialEquipments';
+import { OFFICIAL_PREVENTIVE_SHEETS } from '../data/preventiveProgramData';
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  getNotificationHistory,
+  getNotificationSettings,
+  playNotificationSound,
+  requestNotificationPermission,
+  saveNotificationHistory,
+  saveNotificationSettings,
+  triggerAppNotification,
+} from '../utils/notifications';
 
 interface MaintenanceContextType {
   services: ServiceItem[];
+  equipments: EquipmentItem[];
   categories: CategoryItem[];
   problemTemplates: ProblemTemplate[];
   locations: LocationItem[];
   members: UserMember[];
   monthlyBudgets: MonthlyBudget[];
+  preventiveSheets: PreventiveWorkSheet[];
   currentUser: UserMember;
   firebaseUser: FirebaseUser | null;
   isAuthenticated: boolean;
@@ -80,6 +100,8 @@ interface MaintenanceContextType {
   // Modal UI Triggers
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
+  isNotificationCenterOpen: boolean;
+  setIsNotificationCenterOpen: (open: boolean) => void;
   isUserManagementModalOpen: boolean;
   editingMemberForModal: UserMember | null;
   openUserManagementModal: (editingMember?: UserMember) => void;
@@ -91,6 +113,17 @@ interface MaintenanceContextType {
   batchAssignTargetIds: string[];
   openBatchAssignModal: (serviceIds?: string[]) => void;
   closeBatchAssignModal: () => void;
+
+  // Notification System
+  notifications: AppNotification[];
+  unreadNotificationsCount: number;
+  notificationSettings: NotificationSettings;
+  updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
+  markNotificationAsRead: (id: string) => void;
+  markAllNotificationsAsRead: () => void;
+  clearNotifications: () => void;
+  sendTestNotification: () => Promise<void>;
+  requestPushPermission: () => Promise<boolean>;
 
   // Auth Actions
   loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
@@ -147,6 +180,31 @@ interface MaintenanceContextType {
       forecastMonth?: string;
     }
   ) => Promise<void>;
+
+  // Equipments & Patrimônio
+  addEquipment: (equipment: Omit<EquipmentItem, 'id' | 'createdAt' | 'updatedAt' | 'maintenanceHistory'>) => Promise<EquipmentItem>;
+  updateEquipment: (id: string, updates: Partial<EquipmentItem>) => Promise<void>;
+  deleteEquipment: (id: string) => Promise<void>;
+  addEquipmentMaintenanceLog: (equipmentId: string, log: Omit<EquipmentMaintenanceLog, 'id'>) => Promise<void>;
+  getEquipmentByCode: (code: string) => EquipmentItem | undefined;
+
+  // Preventive Program (06/26)
+  createServicesFromPreventiveSheet: (
+    sheetId: string,
+    customData?: {
+      dueDate?: string;
+      executorName?: string;
+      supervisorName?: string;
+      location?: string;
+    }
+  ) => Promise<ServiceItem>;
+  createServicesFromPreventiveEvent: (
+    period: PreventiveEventPeriod,
+    options?: {
+      executorName?: string;
+      dueDate?: string;
+    }
+  ) => Promise<number>;
 
   // Categories
   addCategory: (category: Omit<CategoryItem, 'id'>) => Promise<void>;
@@ -274,6 +332,14 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [monthlyBudgets, setMonthlyBudgets] = useState<MonthlyBudget[]>(() =>
     getInitialCachedData<MonthlyBudget[]>('sr_cache_budgets_v6', [])
   );
+  const [equipments, setEquipments] = useState<EquipmentItem[]>(() =>
+    getInitialCachedData<EquipmentItem[]>('sr_cache_equipments_v1', INITIAL_EQUIPMENTS)
+  );
+
+  // Notification System State
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => getNotificationHistory());
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(() => getNotificationSettings());
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState<boolean>(false);
 
   // Auth State
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -596,6 +662,27 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       (err) => console.error('Firestore budgets listener error:', err)
     );
 
+    const unsubEquipments = onSnapshot(
+      collection(db, 'equipments'),
+      (snap) => {
+        if (snap.empty) {
+          INITIAL_EQUIPMENTS.forEach((eq) => {
+            setDoc(doc(db, 'equipments', eq.id), eq).catch(console.error);
+          });
+          setEquipments(INITIAL_EQUIPMENTS);
+          saveToLocalStorage('sr_cache_equipments_v1', INITIAL_EQUIPMENTS);
+          return;
+        }
+        const items = snap.docs.map((docSnap) => ({
+          ...(docSnap.data() as EquipmentItem),
+          id: docSnap.id,
+        }));
+        setEquipments(items);
+        saveToLocalStorage('sr_cache_equipments_v1', items);
+      },
+      (err) => console.error('Firestore equipments listener error:', err)
+    );
+
     return () => {
       unsubServices();
       unsubCategories();
@@ -603,6 +690,7 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       unsubLocations();
       unsubMembers();
       unsubBudgets();
+      unsubEquipments();
     };
   }, []);
 
@@ -1708,15 +1796,216 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     });
   };
 
+  // ----------------------------------------------------
+  // Equipment / Patrimônio Handlers
+  // ----------------------------------------------------
+  const addEquipment = async (
+    eqData: Omit<EquipmentItem, 'id' | 'createdAt' | 'updatedAt' | 'maintenanceHistory'>
+  ): Promise<EquipmentItem> => {
+    const newId = `eq-${Date.now()}`;
+    const now = new Date().toISOString();
+    const newEquipment: EquipmentItem = {
+      ...eqData,
+      id: newId,
+      createdAt: now,
+      updatedAt: now,
+      maintenanceHistory: [],
+    };
+
+    setEquipments((prev) => [newEquipment, ...prev]);
+    saveToLocalStorage('sr_cache_equipments_v1', [newEquipment, ...equipments]);
+
+    try {
+      await setDoc(doc(db, 'equipments', newId), cleanFirestoreData(newEquipment));
+    } catch (err) {
+      console.error('Erro ao gravar equipamento no Firestore:', err);
+    }
+
+    // Trigger notification
+    await triggerAppNotification({
+      title: 'Novo Equipamento Cadastrado 📦',
+      body: `${newEquipment.code} - ${newEquipment.name} adicionado ao patrimônio do Salão.`,
+      type: 'SYSTEM',
+      equipmentId: newId,
+      linkTab: 'equipments',
+    });
+    setNotifications(getNotificationHistory());
+
+    return newEquipment;
+  };
+
+  const updateEquipment = async (id: string, updates: Partial<EquipmentItem>) => {
+    const now = new Date().toISOString();
+    const cleanedUpdates = { ...updates, updatedAt: now };
+
+    setEquipments((prev) => prev.map((eq) => (eq.id === id ? { ...eq, ...cleanedUpdates } : eq)));
+
+    try {
+      await updateDoc(doc(db, 'equipments', id), cleanFirestoreData(cleanedUpdates));
+    } catch (err) {
+      console.error('Erro ao atualizar equipamento:', err);
+    }
+  };
+
+  const deleteEquipment = async (id: string) => {
+    setEquipments((prev) => prev.filter((eq) => eq.id !== id));
+    try {
+      await deleteDoc(doc(db, 'equipments', id));
+    } catch (err) {
+      console.error('Erro ao excluir equipamento:', err);
+    }
+  };
+
+  const addEquipmentMaintenanceLog = async (
+    equipmentId: string,
+    log: Omit<EquipmentMaintenanceLog, 'id'>
+  ) => {
+    const newLogId = `log-${Date.now()}`;
+    const fullLog: EquipmentMaintenanceLog = {
+      ...log,
+      id: newLogId,
+    };
+
+    const targetEq = equipments.find((e) => e.id === equipmentId);
+    const existingHistory = targetEq?.maintenanceHistory || [];
+    const updatedHistory = [fullLog, ...existingHistory];
+
+    await updateEquipment(equipmentId, {
+      maintenanceHistory: updatedHistory,
+      lastMaintenanceDate: log.date,
+    });
+  };
+
+  const getEquipmentByCode = (code: string) => {
+    if (!code) return undefined;
+    const q = code.toUpperCase().trim();
+    return equipments.find((e) => e.code.toUpperCase() === q);
+  };
+
+  // ----------------------------------------------------
+  // Notification Handlers
+  // ----------------------------------------------------
+  const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
+
+  const updateNotificationSettings = (newSettings: Partial<NotificationSettings>) => {
+    setNotificationSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+      saveNotificationSettings(updated);
+      return updated;
+    });
+  };
+
+  const markNotificationAsRead = (id: string) => {
+    setNotifications((prev) => {
+      const updated = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
+      saveNotificationHistory(updated);
+      return updated;
+    });
+  };
+
+  const markAllNotificationsAsRead = () => {
+    setNotifications((prev) => {
+      const updated = prev.map((n) => ({ ...n, read: true }));
+      saveNotificationHistory(updated);
+      return updated;
+    });
+  };
+
+  const clearNotifications = () => {
+    setNotifications([]);
+    saveNotificationHistory([]);
+  };
+
+  const sendTestNotification = async () => {
+    await triggerAppNotification({
+      title: 'Notificação de Teste PWA 🔔',
+      body: 'O sistema de notificações do Salão do Reino está ativo e funcionando perfeitamente!',
+      type: 'SYSTEM',
+    });
+    setNotifications(getNotificationHistory());
+  };
+
+  const requestPushPermission = async () => {
+    const granted = await requestNotificationPermission();
+    if (granted) {
+      updateNotificationSettings({ enablePush: true });
+    }
+    return granted;
+  };
+
+  // ----------------------------------------------------
+  // Preventive Program (06/26) Handlers
+  // ----------------------------------------------------
+  const createServicesFromPreventiveSheet = async (
+    sheetId: string,
+    customData?: {
+      dueDate?: string;
+      executorName?: string;
+      supervisorName?: string;
+      location?: string;
+    }
+  ): Promise<ServiceItem> => {
+    const sheet = OFFICIAL_PREVENTIVE_SHEETS.find((s) => s.id === sheetId);
+    if (!sheet) throw new Error('Ficha preventiva não encontrada');
+
+    const checklistText = sheet.guidelines.map((g) => `• ${g}`).join('\n');
+    const safetyText = sheet.safetyInstructions?.length
+      ? `\n\nInstruções de Segurança:\n${sheet.safetyInstructions.map((s) => `⚠️ ${s}`).join('\n')}`
+      : '';
+
+    const newServiceData: Partial<ServiceItem> = {
+      title: `${sheet.title} (Oficial 06/26)`,
+      category: sheet.category,
+      problem: sheet.title,
+      description: `Ficha de Manutenção Oficial [${sheet.id}] - Período: ${sheet.periodLabel}\nFrequência: ${sheet.frequency}\n\nChecklist:\n${checklistText}${safetyText}`,
+      recommendedSolution: sheet.guidelines.join('; '),
+      location: customData?.location || 'Salão Principal & Anexos',
+      priority: sheet.requiresTM ? 'Alta' : 'Média',
+      status: 'PLANEJADO',
+      officialStatus: 'Planejado',
+      executorName: customData?.executorName || '',
+      supervisorName: customData?.supervisorName || '',
+      dueDate: customData?.dueDate || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+      forecastMonth: MONTH_NAMES[new Date().getMonth()] as MonthName,
+      needsTM: !!sheet.requiresTM,
+      needsTMOption: sheet.requiresTM ? 'Sim' : 'Não',
+      isHighRisk: !!sheet.isHighRisk,
+      highRiskWork: sheet.isHighRisk ? 'Sim' : 'Não',
+      safetyChecklistConfirmed: false,
+      risk: (sheet.requiresTM ? 4 : 2) as RiskLevel,
+      notes: `Ficha de Manutenção Oficial [${sheet.id}] - Período: ${sheet.periodLabel}\nFrequência: ${sheet.frequency}`,
+    };
+
+    return await addService(newServiceData);
+  };
+
+  const createServicesFromPreventiveEvent = async (
+    period: PreventiveEventPeriod,
+    options?: {
+      executorName?: string;
+      dueDate?: string;
+    }
+  ): Promise<number> => {
+    const sheets = OFFICIAL_PREVENTIVE_SHEETS.filter((s) => s.eventPeriod === period);
+    let count = 0;
+    for (const sheet of sheets) {
+      await createServicesFromPreventiveSheet(sheet.id, options);
+      count++;
+    }
+    return count;
+  };
+
   return (
     <MaintenanceContext.Provider
       value={{
         services,
+        equipments,
         categories,
         problemTemplates,
         locations,
         members,
         monthlyBudgets,
+        preventiveSheets: OFFICIAL_PREVENTIVE_SHEETS,
         currentUser,
         firebaseUser,
         isAuthenticated: !!firebaseUser,
@@ -1738,6 +2027,8 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
         isAuthModalOpen,
         setIsAuthModalOpen,
+        isNotificationCenterOpen,
+        setIsNotificationCenterOpen,
         isUserManagementModalOpen,
         editingMemberForModal,
         openUserManagementModal,
@@ -1749,6 +2040,16 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         batchAssignTargetIds,
         openBatchAssignModal,
         closeBatchAssignModal,
+
+        notifications,
+        unreadNotificationsCount,
+        notificationSettings,
+        updateNotificationSettings,
+        markNotificationAsRead,
+        markAllNotificationsAsRead,
+        clearNotifications,
+        sendTestNotification,
+        requestPushPermission,
 
         loginWithGoogle,
         loginWithEmail,
@@ -1775,6 +2076,15 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         addHistoryEvent,
         batchAssignServices,
         batchCreateServicesFromTemplates,
+
+        addEquipment,
+        updateEquipment,
+        deleteEquipment,
+        addEquipmentMaintenanceLog,
+        getEquipmentByCode,
+
+        createServicesFromPreventiveSheet,
+        createServicesFromPreventiveEvent,
 
         addCategory,
         updateCategory,
