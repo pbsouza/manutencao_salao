@@ -271,13 +271,14 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           id="btn-header-notifications"
           onClick={() => setIsNotificationCenterOpen(true)}
-          className="relative p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 transition-colors cursor-pointer border border-gray-200"
-          title="Central de Notificações PWA"
+          className="relative flex items-center gap-1.5 p-2 sm:px-2.5 sm:py-1.5 rounded-lg bg-blue-50/80 hover:bg-blue-100/80 text-blue-800 hover:text-blue-950 transition-colors cursor-pointer border border-blue-200 shadow-2xs"
+          title="Abrir Central de Notificações e Testar Alertas"
           aria-label="Abrir notificações"
         >
-          <Bell className="w-4 h-4" />
+          <Bell className="w-4 h-4 text-blue-600" />
+          <span className="hidden md:inline text-xs font-bold text-blue-700">Notificações</span>
           {unreadNotificationsCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-600 text-white font-extrabold text-[9px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center shadow-xs animate-pulse">
+            <span className="absolute -top-1 -right-1 sm:static bg-red-600 text-white font-extrabold text-[9px] min-w-4 h-4 px-1 rounded-full flex items-center justify-center shadow-xs animate-pulse">
               {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
             </span>
           )}

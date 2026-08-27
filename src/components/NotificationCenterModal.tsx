@@ -416,10 +416,31 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 flex justify-end">
+        <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between gap-2">
+          <button
+            onClick={handleSendTest}
+            className={`px-3.5 py-1.5 font-bold rounded-lg text-xs transition cursor-pointer flex items-center gap-1.5 shadow-xs ${
+              testSuccess
+                ? 'bg-emerald-600 text-white'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
+          >
+            {testSuccess ? (
+              <>
+                <Check className="w-3.5 h-3.5" />
+                <span>Enviado! 🔔</span>
+              </>
+            ) : (
+              <>
+                <BellRing className="w-3.5 h-3.5" />
+                <span>Testar Notificação Agora</span>
+              </>
+            )}
+          </button>
+
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-bold rounded-lg transition cursor-pointer"
+            className="px-4 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-bold rounded-lg transition cursor-pointer"
           >
             Fechar
           </button>

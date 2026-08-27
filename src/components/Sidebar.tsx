@@ -210,6 +210,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, setMobileO
               </span>
             </button>
           )}
+
+          <button
+            onClick={() => {
+              setIsNotificationCenterOpen(true);
+              if (setMobileOpen) setMobileOpen(false);
+            }}
+            className="w-full flex items-center justify-between px-3 py-1.5 bg-blue-950/60 hover:bg-blue-900/80 text-blue-200 font-semibold text-[11px] rounded transition-colors border border-blue-800/60 cursor-pointer"
+            title="Abrir Central de Notificações e Testar Alertas"
+          >
+            <div className="flex items-center gap-2">
+              <Bell className="w-3.5 h-3.5 text-blue-400" />
+              <span>Notificações & Alertas</span>
+            </div>
+            {unreadNotificationsCount > 0 ? (
+              <span className="px-1.5 py-0.2 rounded bg-red-600 text-white font-black text-[10px] animate-pulse">
+                {unreadNotificationsCount}
+              </span>
+            ) : (
+              <span className="text-[10px] text-blue-400 font-normal">Push</span>
+            )}
+          </button>
         </div>
 
         {/* Navigation items */}
