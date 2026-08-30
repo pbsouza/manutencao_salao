@@ -335,6 +335,24 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
 
                 <label className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition">
                   <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                      <BellRing className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-800">Alertas de Novos Problemas</p>
+                      <p className="text-[11px] text-gray-500">Notificar imediatamente quando novos problemas forem cadastrados no Salão</p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={notificationSettings.alertNewProblems ?? true}
+                    onChange={(e) => updateNotificationSettings({ alertNewProblems: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 rounded cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition">
+                  <div className="flex items-center gap-2.5">
                     <div className="p-1.5 rounded-lg bg-red-50 text-red-600">
                       <ShieldAlert className="w-4 h-4" />
                     </div>

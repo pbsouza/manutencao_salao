@@ -76,7 +76,7 @@ export const DashboardView: React.FC = () => {
   };
 
   return (
-    <div id="dashboard-view-container" className="p-4 lg:p-6 space-y-5 max-w-7xl mx-auto">
+    <div id="dashboard-view-container" className="p-4 lg:p-6 pb-32 sm:pb-36 md:pb-12 space-y-5 max-w-7xl mx-auto">
       {/* Top High Priority / Alert Alert Banner */}
       {(atrasados > 0 || needsTMList.length > 0 || isBudgetExceeded) && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

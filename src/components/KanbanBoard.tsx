@@ -569,7 +569,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* VIEW MODE 1: SINGLE COLUMN TAB FOCUS (Optimal for Mobile, Tablet, Smartwatches) */}
       {viewMode === 'tabs' && (
-        <div className="flex-1 p-2.5 sm:p-4 max-w-2xl mx-auto w-full pb-28 sm:pb-24 md:pb-8">
+        <div className="flex-1 p-2.5 sm:p-4 max-w-2xl mx-auto w-full pb-32 sm:pb-36 md:pb-12">
           <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden flex flex-col min-h-[400px]">
             {/* Column Title with Prev / Next navigators */}
             <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
@@ -665,7 +665,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* VIEW MODE 2: LIST VIEW STREAM (Compact for all devices) */}
       {viewMode === 'list' && (
-        <div className="flex-1 p-2.5 sm:p-4 max-w-3xl mx-auto w-full space-y-4 pb-28 sm:pb-24 md:pb-8">
+        <div className="flex-1 p-2.5 sm:p-4 max-w-3xl mx-auto w-full space-y-4 pb-32 sm:pb-36 md:pb-12">
           {KANBAN_COLUMNS.map((col) => {
             const colServices = filteredServices.filter(
               (s) => normalizeServiceStatus(s.status) === col.status
@@ -716,7 +716,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* VIEW MODE 3: STANDARD MULTI-COLUMN BOARD (Horizontal Scroll) */}
       {viewMode === 'columns' && (
-        <div id="kanban-board-container" className="flex-1 overflow-x-auto p-2.5 sm:p-4 pb-28 sm:pb-24 md:pb-8">
+        <div id="kanban-board-container" className="flex-1 overflow-x-auto p-2.5 sm:p-4 pb-32 sm:pb-36 md:pb-12">
           <div className="flex items-start gap-3 sm:gap-4 min-w-[1720px] pb-16">
             {KANBAN_COLUMNS.map((col) => {
               const colServices = filteredServices.filter(

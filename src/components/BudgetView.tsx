@@ -55,7 +55,7 @@ export const BudgetView: React.FC = () => {
   const totalActual = services.reduce((acc, s) => acc + (s.actualCost || 0), 0);
 
   return (
-    <div id="budget-view-container" className="p-4 lg:p-6 space-y-4 max-w-7xl mx-auto">
+    <div id="budget-view-container" className="p-4 lg:p-6 pb-32 sm:pb-36 md:pb-12 space-y-4 max-w-7xl mx-auto">
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-lg border border-gray-200 shadow-2xs">
         <div>

@@ -268,6 +268,7 @@ export interface AppNotification {
 
 export interface NotificationSettings {
   enablePush: boolean;
+  alertNewProblems: boolean;
   alertHighGUT: boolean;
   alertAssignments: boolean;
   alertDueDate: boolean;

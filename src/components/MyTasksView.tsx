@@ -73,7 +73,7 @@ export const MyTasksView: React.FC<MyTasksViewProps> = ({ onSelectService }) => 
   if (subFilter === 'completed') displayedServices = completedList;
 
   return (
-    <div id="mytasks-view-container" className="p-4 lg:p-6 space-y-4 max-w-7xl mx-auto">
+    <div id="mytasks-view-container" className="p-4 lg:p-6 pb-32 sm:pb-36 md:pb-12 space-y-4 max-w-7xl mx-auto">
       {/* Header Banner */}
       <div className="bg-white border border-gray-200 p-4 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-2xs">
         <div className="flex items-center gap-3">

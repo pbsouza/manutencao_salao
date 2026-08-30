@@ -98,8 +98,8 @@ const MainAppContent: React.FC = () => {
         {/* Global Filter Bar (shown on Kanban/MyTasks when toggled on) */}
         {(currentActiveTab === 'kanban' || currentActiveTab === 'mytasks') && showFilters && <FilterBar />}
 
-        {/* Dynamic Workspace Views with bottom safe padding on mobile for bottom bar */}
-        <main className="flex-1 min-h-0 relative bg-gray-100/60 pb-16 md:pb-0">
+        {/* Dynamic Workspace Views with generous bottom safe padding on mobile for bottom bar */}
+        <main className="flex-1 min-h-0 relative bg-gray-100/60 pb-32 sm:pb-36 md:pb-12">
           {currentActiveTab === 'kanban' && (
             <KanbanBoard
               onSelectService={(service) => selectService(service)}

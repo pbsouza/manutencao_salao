@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import confetti from 'canvas-confetti';
 import * as XLSX from 'xlsx';
 import {
@@ -378,6 +378,19 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [isProblemTemplatesModalOpen, setIsProblemTemplatesModalOpen] = useState<boolean>(false);
   const [isBatchAssignModalOpen, setIsBatchAssignModalOpen] = useState<boolean>(false);
   const [batchAssignTargetIds, setBatchAssignTargetIds] = useState<string[]>([]);
+  const locallyCreatedServiceIds = useRef<Set<string>>(new Set());
+  const isInitialServicesLoad = useRef<boolean>(true);
+
+  // Sync notification history automatically whenever a notification event is dispatched anywhere in the app
+  useEffect(() => {
+    const handleSyncNotifs = () => {
+      setNotifications(getNotificationHistory());
+    };
+    window.addEventListener('sr-notification-event', handleSyncNotifs);
+    return () => {
+      window.removeEventListener('sr-notification-event', handleSyncNotifs);
+    };
+  }, []);
 
   // Track Firebase Auth state changes
   useEffect(() => {
@@ -408,6 +421,27 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const unsubServices = onSnapshot(
       collection(db, 'services'),
       (snap) => {
+        // Real-time alert for newly added problems from remote / other sessions
+        if (!isInitialServicesLoad.current) {
+          snap.docChanges().forEach((change) => {
+            if (change.type === 'added') {
+              const docId = change.doc.id;
+              if (!locallyCreatedServiceIds.current.has(docId)) {
+                const addedData = change.doc.data() as ServiceItem;
+                const problemTitle = addedData.title || addedData.problem || 'Manutenção';
+                triggerAppNotification({
+                  title: `Novo Problema Registrado 🔔`,
+                  body: `[${addedData.category || 'Geral'} • ${addedData.location || 'Salão'}] ${problemTitle} — Prioridade: ${addedData.priority || 'Normal'} (GUT ${addedData.priorityScore || 0})`,
+                  type: addedData.priority === 'Alta' ? 'GUT_ALERT' : 'SYSTEM',
+                  serviceId: docId,
+                  linkTab: 'kanban',
+                }).catch(console.error);
+              }
+            }
+          });
+        }
+        isInitialServicesLoad.current = false;
+
         const items: ServiceItem[] = [];
         for (const docSnap of snap.docs) {
           const raw = docSnap.data() as ServiceItem;
@@ -1139,8 +1173,28 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     // Optimistic UI update
     setServices((prev) => [newService, ...prev.filter((s) => s.id !== newId)]);
 
+    locallyCreatedServiceIds.current.add(newId);
+    setTimeout(() => {
+      locallyCreatedServiceIds.current.delete(newId);
+    }, 15000);
+
     const cleanedPayload = cleanFirestoreData(newService);
     await setDoc(doc(db, 'services', newId), cleanedPayload);
+
+    // Trigger instant notification & sound for newly registered problem
+    try {
+      await triggerAppNotification({
+        title: `Novo Problema Registrado 🔔`,
+        body: `[${newService.category} • ${newService.location}] ${newService.title} — Prioridade: ${newService.priority} (GUT ${newService.priorityScore})`,
+        type: newService.priority === 'Alta' ? 'GUT_ALERT' : 'SYSTEM',
+        serviceId: newService.id,
+        linkTab: 'kanban',
+      });
+      setNotifications(getNotificationHistory());
+    } catch (notifErr) {
+      console.warn('Erro ao disparar notificação local de novo problema:', notifErr);
+    }
+
     return newService;
   };
 

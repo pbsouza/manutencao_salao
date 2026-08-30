@@ -145,7 +145,7 @@ export const SettingsView: React.FC = () => {
   };
 
   return (
-    <div id="settings-view-container" className="p-4 lg:p-6 space-y-4 max-w-7xl mx-auto">
+    <div id="settings-view-container" className="p-4 lg:p-6 pb-32 sm:pb-36 md:pb-12 space-y-4 max-w-7xl mx-auto">
       {/* Header */}
       <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-2xs">
         <h2 className="text-sm font-bold text-gray-900 tracking-tight">

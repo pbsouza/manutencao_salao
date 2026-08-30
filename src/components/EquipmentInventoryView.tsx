@@ -150,7 +150,7 @@ export const EquipmentInventoryView: React.FC = () => {
   };
 
   return (
-    <div id="equipment-inventory-view" className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+    <div id="equipment-inventory-view" className="p-4 sm:p-6 pb-32 sm:pb-36 md:pb-12 max-w-7xl mx-auto space-y-6">
       {/* Top Header & Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

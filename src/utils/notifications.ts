@@ -2,6 +2,7 @@ import { AppNotification, NotificationSettings } from '../types';
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   enablePush: true,
+  alertNewProblems: true,
   alertHighGUT: true,
   alertAssignments: true,
   alertDueDate: true,
