@@ -20,12 +20,17 @@ import { useMaintenance } from '../context/MaintenanceContext';
 import { AppNotification } from '../types';
 
 interface NotificationCenterModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = ({ isOpen, onClose }) => {
+export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = ({
+  isOpen: propIsOpen,
+  onClose: propOnClose,
+}) => {
   const {
+    isNotificationCenterOpen,
+    setIsNotificationCenterOpen,
     notifications,
     unreadNotificationsCount,
     notificationSettings,
@@ -39,6 +44,15 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     selectService,
     services,
   } = useMaintenance();
+
+  const isOpen = propIsOpen !== undefined ? propIsOpen : isNotificationCenterOpen;
+  const onClose = () => {
+    if (propOnClose) {
+      propOnClose();
+    } else {
+      setIsNotificationCenterOpen(false);
+    }
+  };
 
   const [activeSubTab, setActiveSubTab] = useState<'notifications' | 'settings'>('notifications');
   const [testSuccess, setTestSuccess] = useState(false);
@@ -60,7 +74,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   };
 
   const handleSendTest = async () => {
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'granted') {
       await handleRequestPermission();
     }
     await sendTestNotification();
@@ -280,34 +294,41 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
             </div>
           ) : (
             <div className="space-y-4 text-xs">
-              {/* Native Push Status */}
-              <div className="p-3.5 bg-gray-50 border border-gray-200 rounded-xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-bold text-gray-900">Permissão do Navegador (PWA)</h4>
-                    <p className="text-gray-500 text-[11px] mt-0.5">
-                      Status no dispositivo:{' '}
-                      <strong className={permissionStatus === 'granted' ? 'text-emerald-600' : 'text-amber-600'}>
-                        {permissionStatus === 'granted'
-                          ? 'Autorizado ✓'
-                          : permissionStatus === 'denied'
-                          ? 'Bloqueado no Navegador'
-                          : 'Pendente'}
-                      </strong>
+              {/* Native Push Status on Android / Device */}
+              <div className="p-3.5 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-base">📱</span>
+                      <h4 className="font-bold text-gray-900">Notificações no Aparelho (Android / PWA)</h4>
+                    </div>
+                    <p className="text-gray-600 text-[11px] mt-0.5 leading-snug">
+                      Exibe alertas com som, vibração e banner na barra de status do seu celular Android.
                     </p>
                   </div>
-                  {permissionStatus !== 'granted' ? (
-                    <button
-                      onClick={handleRequestPermission}
-                      className="px-3 py-1 bg-blue-600 text-white rounded-lg font-bold text-[11px] hover:bg-blue-700 transition cursor-pointer"
-                    >
-                      Autorizar
-                    </button>
-                  ) : (
-                    <span className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded-md font-bold text-[11px]">
-                      Ativo
-                    </span>
-                  )}
+                  <div className="shrink-0">
+                    {permissionStatus !== 'granted' ? (
+                      <button
+                        onClick={handleRequestPermission}
+                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs transition cursor-pointer shadow-xs flex items-center gap-1"
+                      >
+                        <BellRing className="w-3.5 h-3.5" />
+                        <span>Permitir no Android</span>
+                      </button>
+                    ) : (
+                      <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg font-bold text-[11px] flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Ativo no Aparelho</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-blue-200/60 text-[11px] text-gray-600 flex items-start gap-1.5">
+                  <Info className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Dica para Android:</strong> Instale o app na tela inicial através do menu do Chrome/Samsung Internet ("Instalar aplicativo" ou "Adicionar à tela de início") para receber alertas em tela cheia e barra de notificações do sistema.
+                  </span>
                 </div>
               </div>
 

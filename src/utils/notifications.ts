@@ -145,36 +145,65 @@ export const triggerAppNotification = async (
     }
   }
 
-  // 4. Trigger Browser Web Notification if allowed
+  // 4. Trigger Android & Device Native System Notification via Service Worker
   if (
     typeof window !== 'undefined' &&
     'Notification' in window &&
-    Notification.permission === 'granted' &&
     settings.enablePush
   ) {
     try {
-      const base = import.meta.env.BASE_URL || '/';
-      const iconUrl = `${base}icon-192.png`;
+      let perm = Notification.permission;
+      if (perm === 'default') {
+        try {
+          perm = await Notification.requestPermission();
+        } catch {
+          // ignore
+        }
+      }
 
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        const reg = await navigator.serviceWorker.ready;
-        await reg.showNotification(newNotif.title, {
+      if (perm === 'granted') {
+        const base = import.meta.env.BASE_URL || '/';
+        const iconUrl = new URL(`${base}icon-192.png`, window.location.href).href;
+        const badgeUrl = new URL(`${base}favicon-32x32.png`, window.location.href).href;
+
+        const notifOptions: NotificationOptions = {
           body: newNotif.body,
           icon: iconUrl,
-          badge: `${base}favicon-32x32.png`,
-          vibrate: [200, 100, 200],
+          badge: badgeUrl,
           tag: newNotif.id,
+          requireInteraction: true,
+          silent: !settings.soundEnabled,
           data: {
+            url: window.location.href,
             linkTab: newNotif.linkTab,
             serviceId: newNotif.serviceId,
             equipmentId: newNotif.equipmentId,
           },
-        } as unknown as NotificationOptions);
-      } else {
-        new Notification(newNotif.title, {
-          body: newNotif.body,
-          icon: iconUrl,
-        });
+          ...( { vibrate: [200, 100, 200, 100, 200], renotify: true } as Record<string, unknown> ),
+        } as NotificationOptions;
+
+        // Try ServiceWorker showNotification first (Required for Android Chrome and installed PWA)
+        if ('serviceWorker' in navigator) {
+          try {
+            let registration = await navigator.serviceWorker.getRegistration();
+            if (!registration) {
+              registration = await navigator.serviceWorker.ready;
+            }
+            if (registration && typeof registration.showNotification === 'function') {
+              await registration.showNotification(newNotif.title, notifOptions);
+              return newNotif;
+            }
+          } catch (swErr) {
+            console.warn('Erro ao chamar registration.showNotification no Android:', swErr);
+          }
+        }
+
+        // Fallback for Desktop browser environments where new Notification() constructor is allowed
+        try {
+          new Notification(newNotif.title, notifOptions);
+        } catch (notifErr) {
+          console.warn('Construtor new Notification falhou (comum no Android, requer Service Worker):', notifErr);
+        }
       }
     } catch (err) {
       console.warn('Erro ao disparar notificação push nativa:', err);
