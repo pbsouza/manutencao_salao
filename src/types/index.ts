@@ -96,11 +96,17 @@ export interface ProblemTemplate {
   notes?: string;
 }
 
+export type AttachmentType = 'image' | 'pdf' | 'document' | 'video';
+export type PhotoStage = 'before' | 'after' | 'receipt' | 'general';
+
 export interface Attachment {
   id: string;
   name: string;
   url: string; // base64 or storage url
-  type: 'image' | 'pdf' | 'document' | 'video';
+  type: AttachmentType;
+  photoStage?: PhotoStage; // 'before' (Antes) | 'after' (Depois) | 'receipt' (Comprovante/Nota) | 'general'
+  amount?: number; // Para comprovantes de despesas financeiras
+  notes?: string;
   size?: number;
   originalSize?: number;
   width?: number;

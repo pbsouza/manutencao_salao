@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Calendar,
   Camera,
+  Check,
   CheckCircle2,
   Clock,
   DollarSign,
@@ -18,9 +19,12 @@ import {
   Loader2,
   MapPin,
   Maximize2,
+  Receipt,
   Save,
+  Share2,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
   Tag,
   Trash2,
   Upload,
@@ -33,6 +37,7 @@ import { isDummyPerson, useMaintenance } from '../context/MaintenanceContext';
 import {
   Attachment,
   MonthName,
+  PhotoStage,
   RiskLevel,
   ServiceItem,
   ServiceStatus,
@@ -48,6 +53,7 @@ import {
   RISK_DEFINITIONS,
 } from '../utils/priority';
 import { formatBytes, optimizePhoto } from '../utils/imageOptimizer';
+import { downloadCalendarEvent, shareServiceOnWhatsApp } from '../utils/shareAndCalendar';
 import { KANBAN_COLUMNS } from './KanbanBoard';
 import { ConfirmModal } from './ConfirmModal';
 
@@ -140,8 +146,10 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
   const [tmStatus, setTmStatus] = useState(service.tmStatus || 'Não iniciado');
   const [safetyConfirmed, setSafetyConfirmed] = useState(service.safetyChecklistConfirmed || false);
 
-  // Attachments
+  // Attachments & Before/After/Receipt management
   const [attachments, setAttachments] = useState<Attachment[]>(service.attachments || []);
+  const [uploadPhotoStage, setUploadPhotoStage] = useState<PhotoStage>('general');
+  const [photoStageFilter, setPhotoStageFilter] = useState<'all' | PhotoStage>('all');
   const [isOptimizingPhotos, setIsOptimizingPhotos] = useState(false);
   const [optimizingProgress, setOptimizingProgress] = useState({ current: 0, total: 0 });
   const [previewPhoto, setPreviewPhoto] = useState<Attachment | null>(null);
@@ -149,6 +157,7 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
   const [isDeletingPhoto, setIsDeletingPhoto] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Security check: Only logged-in Administrators can delete photos
   const canDeletePhoto = Boolean(firebaseUser && isAdmin);
@@ -313,6 +322,7 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
             name: opt.name,
             url: opt.dataUrl,
             type: 'image',
+            photoStage: uploadPhotoStage,
             size: opt.size,
             originalSize: opt.originalSize,
             width: opt.width,
@@ -322,7 +332,7 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
             uploadedBy: currentUser.name || 'Pedro Belchior',
           });
         } else {
-          // Non-image fallback (documents)
+          // Non-image fallback (documents/receipts)
           const reader = new FileReader();
           await new Promise<void>((resolve) => {
             reader.onload = (event) => {
@@ -331,7 +341,8 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
                 id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
                 name: file.name,
                 url: result,
-                type: 'document',
+                type: file.type.includes('pdf') ? 'pdf' : 'document',
+                photoStage: uploadPhotoStage,
                 size: file.size,
                 uploadedAt: new Date().toISOString(),
                 uploadedBy: currentUser.name || 'Pedro Belchior',
@@ -450,6 +461,35 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
             </div>
 
             <div className="flex items-center gap-1.5">
+              {/* WhatsApp Share Button */}
+              <button
+                type="button"
+                onClick={() => shareServiceOnWhatsApp(service)}
+                title="Compartilhar resumo no WhatsApp"
+                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">WhatsApp</span>
+              </button>
+
+              {/* Add to Calendar (.ics) Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  downloadCalendarEvent({
+                    title: `[SR] ${service.code} • ${title || service.title}`,
+                    description: `Categoria: ${category}\\nLocal: ${location}\\nPrioridade: ${classification.priority}\\nResponsável: ${responsibleName}\\nSolução: ${recommendedSolution || 'Verificar no local'}`,
+                    location: `Salão do Reino • ${location || 'Principal'}`,
+                    startDate: dueDate || service.identifiedDate || new Date().toISOString().split('T')[0],
+                  }, `manutencao_${service.code}.ics`);
+                }}
+                title="Adicionar data do serviço na sua agenda (.ics)"
+                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+              >
+                <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                <span className="hidden sm:inline">Agenda</span>
+              </button>
+
               {firebaseUser && canEditServices && (
                 <button
                   id="btn-delete-service"
@@ -977,25 +1017,73 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
           {/* TAB 2: PHOTOS & ATTACHMENTS */}
           {activeSubTab === 'photos' && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
                 <div>
                   <span className="text-xs font-bold text-slate-800 block flex items-center gap-1.5">
                     <Camera className="w-4 h-4 text-blue-600" />
-                    Fotos do Problema e Comprovantes
+                    Registro Fotográfico Rápido & Comprovantes
                   </span>
                   <span className="text-[11px] text-slate-500">
-                    Otimização com realce de nitidez e compressão inteligente ultraleve.
+                    Registre o <strong>Antes</strong>, o <strong>Depois</strong> e comprovantes com nitidez HD e compressão de 95%.
                   </span>
                 </div>
 
                 {firebaseUser && canEditServices && (
-                  <div className="flex items-center gap-2">
-                    <label className="cursor-pointer bg-white hover:bg-blue-50 border border-slate-300 hover:border-blue-400 text-slate-700 hover:text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-2xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Stage Selector for Upload */}
+                    <div className="flex items-center bg-white border border-slate-300 rounded-lg p-0.5 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setUploadPhotoStage('before')}
+                        className={`px-2 py-1 rounded text-[11px] font-bold transition cursor-pointer ${
+                          uploadPhotoStage === 'before'
+                            ? 'bg-amber-500 text-white shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Antes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUploadPhotoStage('after')}
+                        className={`px-2 py-1 rounded text-[11px] font-bold transition cursor-pointer ${
+                          uploadPhotoStage === 'after'
+                            ? 'bg-emerald-600 text-white shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Depois
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUploadPhotoStage('receipt')}
+                        className={`px-2 py-1 rounded text-[11px] font-bold transition cursor-pointer ${
+                          uploadPhotoStage === 'receipt'
+                            ? 'bg-indigo-600 text-white shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Comprovante
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUploadPhotoStage('general')}
+                        className={`px-2 py-1 rounded text-[11px] font-bold transition cursor-pointer ${
+                          uploadPhotoStage === 'general'
+                            ? 'bg-slate-700 text-white shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Geral
+                      </button>
+                    </div>
+
+                    <label className="cursor-pointer bg-white hover:bg-blue-50 border border-slate-300 hover:border-blue-400 text-slate-700 hover:text-blue-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-2xs">
                       <Upload className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Adicionar Fotos</span>
+                      <span>Galeria</span>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/*,.pdf"
                         multiple
                         onChange={handleFileUpload}
                         className="hidden"
@@ -1004,7 +1092,7 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
 
                     <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-2xs">
                       <Camera className="w-3.5 h-3.5" />
-                      <span>Câmera</span>
+                      <span>Tirar Foto ({uploadPhotoStage === 'before' ? 'Antes' : uploadPhotoStage === 'after' ? 'Depois' : uploadPhotoStage === 'receipt' ? 'Nota' : 'Geral'})</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1016,6 +1104,57 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Filter Pills for View */}
+              {attachments.length > 0 && (
+                <div className="flex items-center gap-1.5 pb-1 overflow-x-auto text-xs">
+                  <span className="text-[11px] font-semibold text-slate-400 mr-1">Filtrar:</span>
+                  <button
+                    type="button"
+                    onClick={() => setPhotoStageFilter('all')}
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold transition cursor-pointer ${
+                      photoStageFilter === 'all'
+                        ? 'bg-slate-800 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    Todas ({attachments.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPhotoStageFilter('before')}
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold transition cursor-pointer ${
+                      photoStageFilter === 'before'
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+                    }`}
+                  >
+                    Antes ({attachments.filter((a) => a.photoStage === 'before').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPhotoStageFilter('after')}
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold transition cursor-pointer ${
+                      photoStageFilter === 'after'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                    }`}
+                  >
+                    Depois ({attachments.filter((a) => a.photoStage === 'after').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPhotoStageFilter('receipt')}
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold transition cursor-pointer ${
+                      photoStageFilter === 'receipt'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
+                    }`}
+                  >
+                    Comprovantes ({attachments.filter((a) => a.photoStage === 'receipt').length})
+                  </button>
+                </div>
+              )}
 
               {/* Progress feedback */}
               {isOptimizingPhotos && (
@@ -1033,80 +1172,109 @@ const ServiceDetailModalContent: React.FC<ServiceDetailModalContentProps> = ({
               {attachments.length === 0 ? (
                 <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 text-slate-400">
                   <FileImage className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-xs font-medium">Nenhuma foto anexada a este serviço.</p>
+                  <p className="text-xs font-medium">Nenhuma foto ou comprovante anexado a este serviço.</p>
                   {firebaseUser && canEditServices && (
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Use os botões acima para fotografar ou selecionar fotos da galeria.
+                      Selecione "Antes", "Depois" ou "Comprovante" acima e fotografe pelo celular.
                     </p>
                   )}
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {attachments.map((att) => (
-                    <div
-                      key={att.id}
-                      className="group relative rounded-xl border border-slate-200 overflow-hidden shadow-2xs bg-white flex flex-col hover:shadow-md transition"
-                    >
-                      <div className="aspect-video relative overflow-hidden bg-slate-100">
-                        <img
-                          src={att.url}
-                          alt={att.name}
-                          className="w-full h-full object-cover cursor-pointer transition duration-200 group-hover:scale-105"
-                          onClick={() => setPreviewPhoto(att)}
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2 pointer-events-none group-hover:pointer-events-auto">
-                          <button
-                            type="button"
-                            onClick={() => setPreviewPhoto(att)}
-                            className="p-1.5 bg-white/90 text-slate-800 rounded-lg hover:bg-white transition cursor-pointer shadow-xs"
-                            title="Visualizar em alta resolução"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                          {canDeletePhoto && (
-                            <button
-                              type="button"
-                              onClick={() => handleRequestDeletePhoto(att)}
-                              className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition cursor-pointer shadow-xs"
-                              title="Excluir foto (Apenas Administrador)"
+                  {attachments
+                    .filter((att) => photoStageFilter === 'all' || att.photoStage === photoStageFilter)
+                    .map((att) => {
+                      const stageLabel =
+                        att.photoStage === 'before'
+                          ? 'Antes'
+                          : att.photoStage === 'after'
+                          ? 'Depois'
+                          : att.photoStage === 'receipt'
+                          ? 'Comprovante'
+                          : 'Geral';
+
+                      const stageBadgeColor =
+                        att.photoStage === 'before'
+                          ? 'bg-amber-500 text-white'
+                          : att.photoStage === 'after'
+                          ? 'bg-emerald-600 text-white'
+                          : att.photoStage === 'receipt'
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-700 text-white';
+
+                      return (
+                        <div
+                          key={att.id}
+                          className="group relative rounded-xl border border-slate-200 overflow-hidden shadow-2xs bg-white flex flex-col hover:shadow-md transition"
+                        >
+                          <div className="aspect-video relative overflow-hidden bg-slate-100">
+                            <img
+                              src={att.url}
+                              alt={att.name}
+                              className="w-full h-full object-cover cursor-pointer transition duration-200 group-hover:scale-105"
+                              onClick={() => setPreviewPhoto(att)}
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2 pointer-events-none group-hover:pointer-events-auto">
+                              <button
+                                type="button"
+                                onClick={() => setPreviewPhoto(att)}
+                                className="p-1.5 bg-white/90 text-slate-800 rounded-lg hover:bg-white transition cursor-pointer shadow-xs"
+                                title="Visualizar em alta resolução"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              {canDeletePhoto && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRequestDeletePhoto(att)}
+                                  className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition cursor-pointer shadow-xs"
+                                  title="Excluir foto (Apenas Administrador)"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Stage Badge (Antes / Depois / Comprovante) */}
+                            <span
+                              className={`absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-xs ${stageBadgeColor}`}
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-
-                        <span className="absolute top-1.5 left-1.5 bg-slate-900/80 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                          <Zap className="w-2.5 h-2.5 text-amber-400" />
-                          HD
-                        </span>
-                      </div>
-
-                      <div className="p-2 text-[10px] space-y-1 border-t border-slate-100">
-                        <p className="font-semibold text-slate-800 truncate" title={att.name}>
-                          {att.name}
-                        </p>
-                        <div className="flex items-center justify-between text-slate-500">
-                          <span className="font-mono">{formatBytes(att.size || 0)}</span>
-                          {att.savedPercentage ? (
-                            <span className="text-emerald-700 font-bold bg-emerald-50 px-1 rounded">
-                              -{att.savedPercentage}%
+                              {stageLabel}
                             </span>
-                          ) : null}
+
+                            <span className="absolute top-1.5 right-1.5 bg-slate-900/80 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                              <Zap className="w-2.5 h-2.5 text-amber-400" />
+                              HD
+                            </span>
+                          </div>
+
+                          <div className="p-2 text-[10px] space-y-1 border-t border-slate-100">
+                            <p className="font-semibold text-slate-800 truncate" title={att.name}>
+                              {att.name}
+                            </p>
+                            <div className="flex items-center justify-between text-slate-500">
+                              <span className="font-mono">{formatBytes(att.size || 0)}</span>
+                              {att.savedPercentage ? (
+                                <span className="text-emerald-700 font-bold bg-emerald-50 px-1 rounded">
+                                  -{att.savedPercentage}%
+                                </span>
+                              ) : null}
+                            </div>
+                            {canDeletePhoto && (
+                              <button
+                                type="button"
+                                onClick={() => handleRequestDeletePhoto(att)}
+                                className="w-full mt-1.5 py-1 px-2 bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 border border-red-200 rounded-md font-semibold text-[10px] flex items-center justify-center gap-1.5 transition cursor-pointer"
+                                title="Excluir foto do serviço (Exclusivo ADM)"
+                              >
+                                <Trash2 className="w-3 h-3 text-red-600 shrink-0" />
+                                <span>Excluir Foto</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        {canDeletePhoto && (
-                          <button
-                            type="button"
-                            onClick={() => handleRequestDeletePhoto(att)}
-                            className="w-full mt-1.5 py-1 px-2 bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 border border-red-200 rounded-md font-semibold text-[10px] flex items-center justify-center gap-1.5 transition cursor-pointer"
-                            title="Excluir foto do serviço (Exclusivo ADM)"
-                          >
-                            <Trash2 className="w-3 h-3 text-red-600 shrink-0" />
-                            <span>Excluir Foto</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                      );
+                    })}
                 </div>
               )}
             </div>

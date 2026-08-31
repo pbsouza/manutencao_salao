@@ -11,12 +11,14 @@ import {
   Flame,
   HardHat,
   Printer,
+  Share2,
   ShieldAlert,
   Tag,
 } from 'lucide-react';
 import { useMaintenance } from '../context/MaintenanceContext';
 import { exportServicesToExcel, exportServicesToPDF } from '../utils/export';
 import { formatCurrencyBRL, formatDateBR, isOverdue } from '../utils/priority';
+import { downloadCalendarEvent } from '../utils/shareAndCalendar';
 
 type ReportPreset =
   | 'all'
@@ -91,6 +93,24 @@ export const ReportsView: React.FC = () => {
     exportServicesToExcel(filtered, `manutencao_salao_${preset}`);
   };
 
+  const handleShareReportWhatsApp = () => {
+    const title = getReportTitle();
+    const text = [
+      `*🏛️ RELATÓRIO DO SALÃO DO REINO*`,
+      `📑 *${title}*`,
+      `📊 *Total de Itens:* ${totalItems}`,
+      `💰 *Custo Estimado Total:* ${formatCurrencyBRL(totalEstimated)}`,
+      `💵 *Custo Realizado:* ${formatCurrencyBRL(totalActual)}`,
+      ``,
+      `*Principais Serviços:*`,
+      ...filtered.slice(0, 8).map((s, idx) => `${idx + 1}. [${s.code}] ${s.problem || s.title} (${s.priority} - ${s.status})`),
+      filtered.length > 8 ? `_... e mais ${filtered.length - 8} serviços._` : '',
+    ].filter(Boolean).join('\n');
+
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div id="reports-view-container" className="p-4 lg:p-6 pb-32 sm:pb-36 md:pb-12 space-y-4 max-w-7xl mx-auto">
       {/* Header */}
@@ -105,14 +125,23 @@ export const ReportsView: React.FC = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleShareReportWhatsApp}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded shadow-2xs transition-all cursor-pointer"
+            title="Compartilhar resumo deste relatório via WhatsApp"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span>WhatsApp</span>
+          </button>
+
           <button
             id="btn-export-excel"
             onClick={handleExportExcel}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded shadow-2xs transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold rounded shadow-2xs transition-all cursor-pointer"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Exportar Excel (.xlsx)</span>
+            <span>Excel (.xlsx)</span>
           </button>
 
           <button
@@ -121,7 +150,7 @@ export const ReportsView: React.FC = () => {
             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded shadow-2xs transition-all cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5" />
-            <span>Exportar PDF</span>
+            <span>PDF</span>
           </button>
         </div>
       </div>
