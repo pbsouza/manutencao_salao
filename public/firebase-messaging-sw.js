@@ -21,16 +21,33 @@ try {
   messaging.onBackgroundMessage(function (payload) {
     console.log('[firebase-messaging-sw.js] Received background push message:', payload);
 
-    const title = payload.notification?.title || payload.data?.title || 'Salão do Reino • Manutenção 🔔';
+    const title = payload.notification?.title || payload.data?.title || 'Novo Problema Registrado 🔔';
     const body = payload.notification?.body || payload.data?.body || 'Nova notificação de manutenção recebida no seu dispositivo.';
-    const icon = payload.notification?.icon || payload.data?.icon || '/icon-192.png';
-    const badge = payload.notification?.badge || payload.data?.badge || '/favicon-32x32.png';
-    const tag = payload.data?.tag || payload.collapse_key || `fcm-push-${Date.now()}`;
+    
+    // Resolve full icon and badge URLs based on registration scope so app icon is always loaded
+    let iconUrl = payload.notification?.icon || payload.data?.icon;
+    let badgeUrl = payload.notification?.badge || payload.data?.badge;
+    try {
+      const baseScope = self.registration ? self.registration.scope : self.location.origin + '/';
+      if (!iconUrl || iconUrl.startsWith('/')) {
+        iconUrl = new URL('icon-192.png', baseScope).href;
+      }
+      if (!badgeUrl || badgeUrl.startsWith('/')) {
+        badgeUrl = new URL('favicon-32x32.png', baseScope).href;
+      }
+    } catch {
+      iconUrl = '/icon-192.png';
+      badgeUrl = '/favicon-32x32.png';
+    }
+
+    const tag = payload.data?.serviceId
+      ? `sr-service-${payload.data.serviceId}`
+      : payload.data?.tag || payload.collapse_key || `fcm-push-${Date.now()}`;
 
     const notificationOptions = {
       body: body,
-      icon: icon,
-      badge: badge,
+      icon: iconUrl,
+      badge: badgeUrl,
       vibrate: [200, 100, 200, 100, 200],
       tag: tag,
       renotify: true,

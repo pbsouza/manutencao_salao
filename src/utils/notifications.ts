@@ -166,11 +166,17 @@ export const triggerAppNotification = async (
         const iconUrl = new URL(`${base}icon-192.png`, window.location.href).href;
         const badgeUrl = new URL(`${base}favicon-32x32.png`, window.location.href).href;
 
+        const notifTag = newNotif.serviceId
+          ? `sr-service-${newNotif.serviceId}`
+          : newNotif.equipmentId
+          ? `sr-eq-${newNotif.equipmentId}`
+          : newNotif.id;
+
         const notifOptions: NotificationOptions = {
           body: newNotif.body,
           icon: iconUrl,
           badge: badgeUrl,
-          tag: newNotif.id,
+          tag: notifTag,
           requireInteraction: true,
           silent: !settings.soundEnabled,
           data: {

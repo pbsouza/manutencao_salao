@@ -269,6 +269,10 @@ export const broadcastFCMPushToAllDevices = async ({
     let sentCount = 0;
     if (tokenStrings.length > 0) {
       try {
+        const base = typeof window !== 'undefined' ? (import.meta.env.BASE_URL || '/') : '/';
+        const iconUrl = typeof window !== 'undefined' ? new URL(`${base}icon-192.png`, window.location.href).href : '/icon-192.png';
+        const badgeUrl = typeof window !== 'undefined' ? new URL(`${base}favicon-32x32.png`, window.location.href).href : '/favicon-32x32.png';
+
         const res = await fetch('/api/fcm/broadcast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -278,6 +282,8 @@ export const broadcastFCMPushToAllDevices = async ({
             linkTab,
             serviceId,
             equipmentId,
+            icon: iconUrl,
+            badge: badgeUrl,
             tokens: tokenStrings,
             senderToken: getStoredFCMToken(),
           }),
@@ -295,34 +301,7 @@ export const broadcastFCMPushToAllDevices = async ({
       }
     }
 
-    // 2. Also ensure local service worker triggers immediately on this device if supported
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        if (reg && typeof reg.showNotification === 'function') {
-          await reg.showNotification(title, {
-            body,
-            icon: '/icon-192.png',
-            badge: '/favicon-32x32.png',
-            vibrate: [200, 100, 200, 100, 200],
-            tag: `fcm-broadcast-${Date.now()}`,
-            renotify: true,
-            requireInteraction: true,
-            data: {
-              url: window.location.href,
-              linkTab: linkTab || 'kanban',
-              serviceId: serviceId || null,
-              equipmentId: equipmentId || null,
-              timestamp: Date.now(),
-            },
-          } as NotificationOptions);
-        }
-      } catch (localErr) {
-        console.warn('[FCM Broadcast] Aviso ao exibir notificação local:', localErr);
-      }
-    }
-
-    // 3. Log event in Firestore
+    // 2. Log event in Firestore
     try {
       const notifId = `fcm_log_${Date.now()}`;
       await setDoc(doc(db, 'fcmNotifications', notifId), {

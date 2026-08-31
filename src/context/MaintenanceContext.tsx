@@ -1193,10 +1193,10 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
       });
       setNotifications(getNotificationHistory());
 
-      // Broadcast remote FCM Push to all registered Android devices (even when app is closed)
+      // Broadcast remote FCM Push to other registered Android devices (even when app is closed)
       broadcastFCMPushToAllDevices({
-        title: `Salão do Reino • Novo Chamado 🔔`,
-        body: `[${newService.category} • ${newService.location}] ${newService.title} (Prioridade: ${newService.priority})`,
+        title: `Novo Problema Registrado 🔔`,
+        body: `[${newService.category} • ${newService.location}] ${newService.title} — Prioridade: ${newService.priority} (GUT ${newService.priorityScore})`,
         linkTab: 'kanban',
         serviceId: newService.id,
       }).catch((fcmErr) => console.warn('Erro ao propagar broadcast FCM:', fcmErr));
