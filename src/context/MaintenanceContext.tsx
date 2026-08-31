@@ -756,6 +756,31 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [services]);
 
+  // Deep Link: Automatically open service detail or navigate to tab if provided in URL query parameters
+  const handledDeepLink = useRef<boolean>(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || services.length === 0 || handledDeepLink.current) return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlServiceId = params.get('serviceId');
+      const urlTab = params.get('tab');
+
+      if (urlTab) {
+        setActiveTab(urlTab);
+      }
+
+      if (urlServiceId) {
+        const found = services.find((s) => s.id === urlServiceId || s.code === urlServiceId);
+        if (found) {
+          setSelectedService(found);
+          handledDeepLink.current = true;
+        }
+      }
+    } catch (err) {
+      console.warn('Erro ao processar parâmetros da URL:', err);
+    }
+  }, [services]);
+
   // Auth Operations
   const loginWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
     try {

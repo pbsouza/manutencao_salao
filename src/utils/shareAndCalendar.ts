@@ -5,8 +5,20 @@ import { formatDateBR } from './priority';
  * Formats a clean, readable message for sharing via WhatsApp
  */
 export function generateWhatsAppServiceSummary(service: ServiceItem, baseUrl?: string): string {
-  const currentUrl = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-  const linkText = `${currentUrl}/?serviceId=${service.id}`;
+  let linkText = '';
+  if (baseUrl) {
+    const cleanBase = baseUrl.replace(/\/+$/, '');
+    linkText = `${cleanBase}/?serviceId=${encodeURIComponent(service.id)}`;
+  } else if (typeof window !== 'undefined') {
+    try {
+      const urlObj = new URL(window.location.href);
+      urlObj.search = `serviceId=${encodeURIComponent(service.id)}`;
+      urlObj.hash = '';
+      linkText = urlObj.href;
+    } catch {
+      linkText = `${window.location.origin}${window.location.pathname}?serviceId=${encodeURIComponent(service.id)}`;
+    }
+  }
 
   const priorityEmoji =
     service.priority === 'Alta' ? '🔴 ALTA' : service.priority === 'Média' ? '🟡 MÉDIA' : '🟢 BAIXA';
