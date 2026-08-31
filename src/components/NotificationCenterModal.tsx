@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Bell,
   BellOff,
@@ -15,9 +15,24 @@ import {
   VolumeX,
   Wrench,
   X,
+  Smartphone,
+  Copy,
+  RefreshCw,
+  Send,
+  Key,
+  Flame,
 } from 'lucide-react';
 import { useMaintenance } from '../context/MaintenanceContext';
 import { AppNotification } from '../types';
+import {
+  getStoredFCMToken,
+  requestFCMToken,
+  getStoredVapidKey,
+  setStoredVapidKey,
+  sendFCMTestPushNotification,
+  getAllRegisteredFCMTokens,
+  type FCMTokenRecord,
+} from '../utils/fcm';
 
 interface NotificationCenterModalProps {
   isOpen?: boolean;
@@ -54,11 +69,30 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     }
   };
 
-  const [activeSubTab, setActiveSubTab] = useState<'notifications' | 'settings'>('notifications');
+  const [activeSubTab, setActiveSubTab] = useState<'notifications' | 'fcm' | 'settings'>('notifications');
   const [testSuccess, setTestSuccess] = useState(false);
+  const [fcmTestSuccess, setFcmTestSuccess] = useState(false);
+  const [copiedToken, setCopiedToken] = useState(false);
+  const [isGeneratingFCM, setIsGeneratingFCM] = useState(false);
+  const [fcmToken, setFcmToken] = useState<string | null>(() => getStoredFCMToken());
+  const [vapidKey, setVapidKey] = useState<string>(() => getStoredVapidKey());
+  const [fcmError, setFcmError] = useState<string | null>(null);
+  const [registeredTokens, setRegisteredTokens] = useState<FCMTokenRecord[]>([]);
   const [permissionStatus, setPermissionStatus] = useState<string>(() =>
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
   );
+
+  useEffect(() => {
+    if (isOpen) {
+      setFcmToken(getStoredFCMToken());
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        setPermissionStatus(Notification.permission);
+      }
+      getAllRegisteredFCMTokens()
+        .then(setRegisteredTokens)
+        .catch(console.warn);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -69,8 +103,63 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     }
     if (granted) {
       updateNotificationSettings({ enablePush: true });
+      handleGenerateFCMToken();
     }
     return granted;
+  };
+
+  const handleGenerateFCMToken = async () => {
+    setIsGeneratingFCM(true);
+    setFcmError(null);
+    try {
+      const res = await requestFCMToken(vapidKey);
+      if (res.success && res.token) {
+        setFcmToken(res.token);
+        const list = await getAllRegisteredFCMTokens();
+        setRegisteredTokens(list);
+      } else if (res.error) {
+        setFcmError(res.error);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setFcmError(msg);
+    } finally {
+      setIsGeneratingFCM(false);
+    }
+  };
+
+  const handleSaveVapidKey = (newKey: string) => {
+    setVapidKey(newKey);
+    setStoredVapidKey(newKey);
+  };
+
+  const handleCopyToken = () => {
+    if (!fcmToken) return;
+    navigator.clipboard.writeText(fcmToken);
+    setCopiedToken(true);
+    setTimeout(() => setCopiedToken(false), 2500);
+  };
+
+  const handleSendFCMTest = async () => {
+    setIsGeneratingFCM(true);
+    setFcmError(null);
+    try {
+      const res = await sendFCMTestPushNotification(
+        'Salão do Reino • Teste Push FCM Android 🔔',
+        'Notificação Push real do Firebase Cloud Messaging recebida com sucesso no seu dispositivo Android!'
+      );
+      if (res.success) {
+        setFcmTestSuccess(true);
+        setTimeout(() => setFcmTestSuccess(false), 4000);
+      } else {
+        setFcmError(res.error || 'Falha ao disparar push');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setFcmError(msg);
+    } finally {
+      setIsGeneratingFCM(false);
+    }
   };
 
   const handleSendTest = async () => {
@@ -136,8 +225,8 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               <BellRing className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base leading-tight">Central de Notificações PWA</h3>
-              <p className="text-xs text-slate-400">Alertas de manutenção, GUT e Preventivas</p>
+              <h3 className="font-bold text-base leading-tight">Central de Notificações & FCM</h3>
+              <p className="text-xs text-slate-400">Firebase Cloud Messaging • Alertas Android e PWA</p>
             </div>
           </div>
           <button
@@ -149,10 +238,10 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         </div>
 
         {/* Tab switcher */}
-        <div className="flex items-center border-b border-gray-200 bg-gray-50/80 px-4 pt-2 gap-2 text-xs font-semibold">
+        <div className="flex items-center border-b border-gray-200 bg-gray-50/80 px-4 pt-2 gap-2 text-xs font-semibold overflow-x-auto scrollbar-none">
           <button
             onClick={() => setActiveSubTab('notifications')}
-            className={`pb-2.5 px-3 border-b-2 transition cursor-pointer flex items-center gap-1.5 ${
+            className={`pb-2.5 px-3 border-b-2 transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeSubTab === 'notifications'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-800'
@@ -168,15 +257,27 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           </button>
 
           <button
+            onClick={() => setActiveSubTab('fcm')}
+            className={`pb-2.5 px-3 border-b-2 transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+              activeSubTab === 'fcm'
+                ? 'border-orange-500 text-orange-600'
+                : 'border-transparent text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            <Flame className="w-3.5 h-3.5 text-orange-500" />
+            <span>Push Real FCM (Android)</span>
+          </button>
+
+          <button
             onClick={() => setActiveSubTab('settings')}
-            className={`pb-2.5 px-3 border-b-2 transition cursor-pointer flex items-center gap-1.5 ${
+            className={`pb-2.5 px-3 border-b-2 transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               activeSubTab === 'settings'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Configurações & Push</span>
+            <span>Preferências</span>
           </button>
 
           {activeSubTab === 'notifications' && notifications.length > 0 && (
@@ -291,6 +392,210 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   ))}
                 </div>
               )}
+            </div>
+          ) : activeSubTab === 'fcm' ? (
+            /* FCM Dedicated Configuration & Diagnostics */
+            <div className="space-y-4 text-xs">
+              {/* Header Status Card */}
+              <div className="p-4 bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 border border-orange-200 rounded-xl space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-orange-600 text-white flex items-center justify-center shadow-xs">
+                      <Flame className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-gray-900 text-sm">Firebase Cloud Messaging (FCM)</h4>
+                      <p className="text-[11px] text-gray-600">Envio de push direto para o SO Android do celular</p>
+                    </div>
+                  </div>
+                  <span
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 ${
+                      fcmToken
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : 'bg-amber-100 text-amber-800 border border-amber-300'
+                    }`}
+                  >
+                    {fcmToken ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>FCM Ativo</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                        <span>Token Pendente</span>
+                      </>
+                    )}
+                  </span>
+                </div>
+
+                {fcmError && (
+                  <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-800 text-[11px] flex items-start gap-2">
+                    <ShieldAlert className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-bold">Aviso FCM:</p>
+                      <p className="break-words">{fcmError}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Token Box */}
+                {fcmToken ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-semibold text-gray-700 flex items-center gap-1">
+                        <Smartphone className="w-3.5 h-3.5 text-orange-600" />
+                        <span>Token de Registro FCM do Dispositivo:</span>
+                      </span>
+                      <button
+                        onClick={handleCopyToken}
+                        className="text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        {copiedToken ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-600" />
+                            <span className="text-emerald-600 font-bold">Copiado!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copiar Token</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <div className="p-2.5 bg-white border border-orange-200 rounded-lg font-mono text-[10px] text-gray-700 break-all select-all max-h-20 overflow-y-auto leading-relaxed shadow-xs">
+                      {fcmToken}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-gray-600 bg-white/80 p-3 rounded-lg border border-orange-200/80">
+                    <p>
+                      Gere o token FCM deste aparelho para registrar seu smartphone Android no banco de dados Firestore e receber notificações push remotas.
+                    </p>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    onClick={handleGenerateFCMToken}
+                    disabled={isGeneratingFCM}
+                    className="flex-1 py-2 px-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-bold rounded-lg transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingFCM ? 'animate-spin' : ''}`} />
+                    <span>{fcmToken ? 'Renovar / Sincronizar Token' : 'Gerar Token FCM no Android'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleSendFCMTest}
+                    disabled={isGeneratingFCM}
+                    className={`py-2 px-3 font-bold rounded-lg transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5 text-white ${
+                      fcmTestSuccess ? 'bg-emerald-600' : 'bg-slate-900 hover:bg-slate-800'
+                    }`}
+                  >
+                    {fcmTestSuccess ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Push Enviado! 📱</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Testar Push Real</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* VAPID Public Key Setting (Optional) */}
+              <div className="p-3.5 bg-white border border-gray-200 rounded-xl space-y-2">
+                <div className="flex items-center gap-2">
+                  <Key className="w-4 h-4 text-gray-700" />
+                  <h4 className="font-bold text-gray-900">Chave VAPID Web Push (Par de Chaves do FCM)</h4>
+                </div>
+                <p className="text-[11px] text-gray-500 leading-relaxed">
+                  Disponível no Firebase Console &gt; Configurações do Projeto &gt; Cloud Messaging &gt; Web Push Certificates.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={vapidKey}
+                    onChange={(e) => handleSaveVapidKey(e.target.value)}
+                    placeholder="Cole a chave pública VAPID (ex: BN8x...)"
+                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-[11px] focus:outline-hidden focus:ring-2 focus:ring-orange-500 font-mono"
+                  />
+                  {vapidKey && (
+                    <button
+                      onClick={() => handleSaveVapidKey('')}
+                      className="px-2.5 py-1 text-gray-400 hover:text-gray-600 text-xs font-semibold cursor-pointer"
+                    >
+                      Limpar
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Registered Devices in Firestore */}
+              <div className="p-3.5 bg-gray-50 border border-gray-200 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-gray-900">
+                    <Smartphone className="w-4 h-4 text-blue-600" />
+                    <span>Aparelhos Registrados na Coleção `fcmTokens`</span>
+                  </div>
+                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full font-bold text-[10px]">
+                    {registeredTokens.length} dispositivo(s)
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-500">
+                  Tokens salvos no Firestore que receberão push notifications quando houver chamados urgentes.
+                </p>
+
+                {registeredTokens.length > 0 ? (
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {registeredTokens.map((t, idx) => (
+                      <div
+                        key={idx}
+                        className="p-2 bg-white border border-gray-200 rounded-lg flex items-center justify-between text-[11px]"
+                      >
+                        <div className="min-w-0 flex-1 pr-2">
+                          <p className="font-bold text-gray-800 truncate">
+                            {t.platform} {t.isAndroid ? '🤖' : '🌐'}
+                          </p>
+                          <p className="text-[10px] text-gray-500 truncate">
+                            {t.userEmail || 'Usuário Local'} • {new Date(t.updatedAt).toLocaleDateString('pt-BR')}
+                          </p>
+                        </div>
+                        <span className="font-mono text-[9px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                          {t.token.substring(0, 10)}...
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-gray-400 italic">Nenhum aparelho registrado ainda. Clique em "Gerar Token FCM no Android" acima.</p>
+                )}
+              </div>
+
+              {/* Backend Integration Code Snippet */}
+              <div className="p-3.5 bg-slate-900 text-slate-200 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-white">Como disparar do seu Backend (Node.js / Firebase Admin):</span>
+                </div>
+                <pre className="text-[10px] font-mono text-emerald-400 bg-slate-950 p-2.5 rounded-lg overflow-x-auto leading-relaxed">
+{`// Envio via Firebase Admin SDK
+admin.messaging().send({
+  token: '${fcmToken ? fcmToken.substring(0, 20) + '...' : 'TOKEN_FCM_DO_ANDROID'}',
+  notification: {
+    title: 'Urgente: Reparo no Salão do Reino 🛠️',
+    body: 'GUT Alta detectada no Ar-Condicionado.'
+  },
+  data: { linkTab: 'kanban', serviceId: '123' },
+  android: { priority: 'high' }
+});`}
+                </pre>
+              </div>
             </div>
           ) : (
             <div className="space-y-4 text-xs">
@@ -457,14 +762,14 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         {/* Footer */}
         <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between gap-2">
           <button
-            onClick={handleSendTest}
+            onClick={activeSubTab === 'fcm' ? handleSendFCMTest : handleSendTest}
             className={`px-3.5 py-1.5 font-bold rounded-lg text-xs transition cursor-pointer flex items-center gap-1.5 shadow-xs ${
-              testSuccess
+              (activeSubTab === 'fcm' ? fcmTestSuccess : testSuccess)
                 ? 'bg-emerald-600 text-white'
                 : 'bg-blue-600 hover:bg-blue-700 text-white'
             }`}
           >
-            {testSuccess ? (
+            {(activeSubTab === 'fcm' ? fcmTestSuccess : testSuccess) ? (
               <>
                 <Check className="w-3.5 h-3.5" />
                 <span>Enviado! 🔔</span>

@@ -63,6 +63,7 @@ try {
 
 export const db = firestoreInstance;
 
+export const firebaseApp = app;
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 

@@ -69,6 +69,32 @@
         "location": { "type": "string" },
         "status": { "type": "string" }
       }
+    },
+    "FCMToken": {
+      "title": "FCMToken",
+      "description": "Tokens de registro do Firebase Cloud Messaging para notificações push no Android",
+      "type": "object",
+      "properties": {
+        "token": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "platform": { "type": "string" },
+        "userAgent": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "FCMNotification": {
+      "title": "FCMNotification",
+      "description": "Histórico de disparos de notificações push FCM",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "targetTokens": { "type": "string" },
+        "status": { "type": "string" },
+        "sentAt": { "type": "string" }
+      }
     }
   },
   "firestore": {
@@ -99,6 +125,14 @@
     "/monthlyBudgets/{monthId}": {
       "schema": { "$ref": "#/entities/MonthlyBudget" },
       "description": "Coleção de orçamentos mensais"
+    },
+    "/fcmTokens/{tokenId}": {
+      "schema": { "$ref": "#/entities/FCMToken" },
+      "description": "Tokens de dispositivos Android e Web registrados no FCM"
+    },
+    "/fcmNotifications/{notifId}": {
+      "schema": { "$ref": "#/entities/FCMNotification" },
+      "description": "Histórico de notificações enviadas via FCM"
     }
   }
 }
