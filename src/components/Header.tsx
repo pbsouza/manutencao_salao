@@ -3,6 +3,7 @@ import {
   Bell,
   BookOpen,
   CalendarCheck,
+  Clock,
   Cpu,
   Download,
   Filter,
@@ -14,6 +15,7 @@ import {
   Search,
   Smartphone,
   Sparkles,
+  Timer,
   UserCheck,
   UserPlus,
   Users,
@@ -52,10 +54,18 @@ export const Header: React.FC<HeaderProps> = ({
     hasRestrictedAccess,
     isUserApproved,
     isAdmin,
+    sessionTimeRemaining,
+    extendSession,
   } = useMaintenance();
 
   const { canInstall, isInstalled, promptInstall } = usePWAInstall();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+
+  const formatSessionTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const getPageTitle = () => {
     switch (activeTab) {
@@ -284,7 +294,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </button>
 
-        {/* Auth / Login Status Button */}
+        {/* Auth / Login Status Button & Session Timer */}
         {!firebaseUser ? (
           <button
             onClick={() => setIsAuthModalOpen(true)}
@@ -294,41 +304,61 @@ export const Header: React.FC<HeaderProps> = ({
             <LogIn className="w-3.5 h-3.5" />
             <span className="inline">Entrar</span>
           </button>
-        ) : !isUserApproved ? (
-          <button
-            onClick={() => setIsAuthModalOpen(true)}
-            className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-xs font-bold text-amber-900 transition cursor-pointer"
-            title="Conta conectada aguardando liberação do Administrador"
-          >
-            <div
-              className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] text-white font-bold shrink-0"
-              style={{ backgroundColor: currentUser.avatarColor || '#d97706' }}
-            >
-              {currentUser.name.charAt(0)}
-            </div>
-            <span className="max-w-[80px] sm:max-w-[110px] truncate text-[11px] sm:text-xs font-semibold">
-              {currentUser.name.split(' ')[0]}
-            </span>
-            <span className="text-[9px] bg-amber-200 text-amber-900 px-1 py-0.2 rounded font-bold uppercase hidden sm:inline">
-              Pendente
-            </span>
-          </button>
         ) : (
-          <button
-            onClick={() => setIsAuthModalOpen(true)}
-            className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-700 transition cursor-pointer"
-            title="Perfil de Usuário Conectado"
-          >
-            <div
-              className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] text-white font-bold shrink-0"
-              style={{ backgroundColor: currentUser.avatarColor || '#2563eb' }}
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            {/* 5-minute Countdown Badge */}
+            <button
+              onClick={() => extendSession()}
+              className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-md text-[10px] sm:text-xs font-mono font-bold border transition-colors cursor-pointer ${
+                sessionTimeRemaining <= 60
+                  ? 'bg-red-50 text-red-700 border-red-300 animate-pulse'
+                  : sessionTimeRemaining <= 120
+                  ? 'bg-amber-50 text-amber-700 border-amber-300'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+              title="Tempo restante de login (limite de 5 minutos para rodízio de usuários). Clique para renovar por mais 5 min."
             >
-              {currentUser.name.charAt(0)}
-            </div>
-            <span className="hidden xs:inline max-w-[70px] sm:max-w-[100px] truncate text-[11px] sm:text-xs">
-              {firebaseUser.displayName || currentUser.name.split(' ')[0]}
-            </span>
-          </button>
+              <Timer className={`w-3 h-3 ${sessionTimeRemaining <= 60 ? 'text-red-600 animate-spin' : 'text-slate-500'}`} />
+              <span>{formatSessionTime(sessionTimeRemaining)}</span>
+            </button>
+
+            {!isUserApproved ? (
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-xs font-bold text-amber-900 transition cursor-pointer"
+                title="Conta conectada aguardando liberação do Administrador"
+              >
+                <div
+                  className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] text-white font-bold shrink-0"
+                  style={{ backgroundColor: currentUser.avatarColor || '#d97706' }}
+                >
+                  {currentUser.name.charAt(0)}
+                </div>
+                <span className="max-w-[80px] sm:max-w-[110px] truncate text-[11px] sm:text-xs font-semibold">
+                  {currentUser.name.split(' ')[0]}
+                </span>
+                <span className="text-[9px] bg-amber-200 text-amber-900 px-1 py-0.2 rounded font-bold uppercase hidden sm:inline">
+                  Pendente
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-700 transition cursor-pointer"
+                title="Perfil de Usuário Conectado"
+              >
+                <div
+                  className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] text-white font-bold shrink-0"
+                  style={{ backgroundColor: currentUser.avatarColor || '#2563eb' }}
+                >
+                  {currentUser.name.charAt(0)}
+                </div>
+                <span className="hidden xs:inline max-w-[70px] sm:max-w-[100px] truncate text-[11px] sm:text-xs">
+                  {firebaseUser.displayName || currentUser.name.split(' ')[0]}
+                </span>
+              </button>
+            )}
+          </div>
         )}
 
         {/* Primary "+ NOVO PROBLEMA" Button (Somente para usuários com acesso restrito liberado) */}

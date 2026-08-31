@@ -126,6 +126,10 @@ interface MaintenanceContextType {
   sendTestNotification: () => Promise<void>;
   requestPushPermission: () => Promise<boolean>;
 
+  // Session & Inactivity Auto-Logout (5 minutes limit)
+  sessionTimeRemaining: number; // in seconds
+  extendSession: () => void;
+
   // Auth Actions
   loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
   loginWithEmail: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
@@ -382,6 +386,19 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const locallyCreatedServiceIds = useRef<Set<string>>(new Set());
   const isInitialServicesLoad = useRef<boolean>(true);
 
+  // 5 Minutes (300 seconds) Auto-Logout Session Timer
+  const SESSION_TIMEOUT_SECONDS = 300; // 5 minutos exatos
+  const [sessionTimeRemaining, setSessionTimeRemaining] = useState<number>(SESSION_TIMEOUT_SECONDS);
+  const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const resetSessionTimer = () => {
+    setSessionTimeRemaining(SESSION_TIMEOUT_SECONDS);
+  };
+
+  const extendSession = () => {
+    resetSessionTimer();
+  };
+
   // Sync notification history automatically whenever a notification event is dispatched anywhere in the app
   useEffect(() => {
     const handleSyncNotifs = () => {
@@ -398,6 +415,9 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
       if (user) {
+        // Reset timer to 5 minutes on login
+        setSessionTimeRemaining(SESSION_TIMEOUT_SECONDS);
+
         const userEmail = (user.email || '').toLowerCase().trim();
         const found = members.find(
           (m) => (m.email && m.email.toLowerCase().trim() === userEmail) || (m.uid && m.uid === user.uid) || m.id === user.uid
@@ -411,11 +431,64 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
             // Ignore localStorage errors
           }
         }
+      } else {
+        setSessionTimeRemaining(SESSION_TIMEOUT_SECONDS);
       }
     });
 
     return () => unsubAuth();
   }, [members]);
+
+  // Active Session 5-Minute Auto-Logout Interval & Inactivity Tracking
+  useEffect(() => {
+    if (!firebaseUser) {
+      if (sessionTimerRef.current) {
+        clearInterval(sessionTimerRef.current);
+        sessionTimerRef.current = null;
+      }
+      return;
+    }
+
+    // Interval to decrement session countdown every second
+    sessionTimerRef.current = setInterval(() => {
+      setSessionTimeRemaining((prev) => {
+        if (prev <= 1) {
+          // Time expired (5 minutes reached): Automatically logout
+          signOut(auth).catch((err) => console.error('Auto logout error:', err));
+          setFirebaseUser(null);
+          triggerAppNotification({
+            title: 'Sessão Encerrada por Limite de Tempo ⏱️',
+            body: 'Seu tempo de uso de 5 minutos expirou para liberar vaga a outros usuários. Faça login novamente se precisar.',
+            type: 'SYSTEM',
+            linkTab: 'dashboard',
+          }).catch(console.error);
+          return SESSION_TIMEOUT_SECONDS;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Activity listeners to optionally refresh user's active presence
+    const handleUserActivity = () => {
+      // User is actively interacting
+    };
+
+    window.addEventListener('mousemove', handleUserActivity, { passive: true });
+    window.addEventListener('keydown', handleUserActivity, { passive: true });
+    window.addEventListener('touchstart', handleUserActivity, { passive: true });
+    window.addEventListener('click', handleUserActivity, { passive: true });
+
+    return () => {
+      if (sessionTimerRef.current) {
+        clearInterval(sessionTimerRef.current);
+        sessionTimerRef.current = null;
+      }
+      window.removeEventListener('mousemove', handleUserActivity);
+      window.removeEventListener('keydown', handleUserActivity);
+      window.removeEventListener('touchstart', handleUserActivity);
+      window.removeEventListener('click', handleUserActivity);
+    };
+  }, [firebaseUser]);
 
   // Firestore Real-Time Subscriptions
   useEffect(() => {
@@ -2162,6 +2235,9 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         clearNotifications,
         sendTestNotification,
         requestPushPermission,
+
+        sessionTimeRemaining,
+        extendSession,
 
         loginWithGoogle,
         loginWithEmail,

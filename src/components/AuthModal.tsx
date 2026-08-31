@@ -7,7 +7,9 @@ import {
   LogOut,
   Mail,
   Phone,
+  RefreshCw,
   Shield,
+  Timer,
   User,
   UserPlus,
   X,
@@ -24,6 +26,8 @@ export const AuthModal: React.FC = () => {
     isAdmin,
     isUserApproved,
     hasRestrictedAccess,
+    sessionTimeRemaining,
+    extendSession,
     loginWithGoogle,
     loginWithEmail,
     registerWithEmail,
@@ -176,6 +180,25 @@ export const AuthModal: React.FC = () => {
                   Sua conta está conectada (<strong>{firebaseUser.email}</strong>), mas o acesso à área restrita e ferramentas de edição só é habilitado após liberação do Administrador (<strong>Pedro Belchior</strong>). Enquanto isso, você visualiza a <strong>área pública</strong> do sistema.
                 </div>
               )}
+
+              {/* 5-minute Auto-Logout Notice */}
+              <div className="flex items-center justify-between gap-2 p-2 bg-white/80 rounded-md border border-gray-200 text-xs">
+                <div className="flex items-center gap-1.5 text-gray-700">
+                  <Timer className={`w-3.5 h-3.5 ${sessionTimeRemaining <= 60 ? 'text-red-500 animate-pulse' : 'text-blue-500'}`} />
+                  <span>
+                    Tempo de sessão ativo: <strong className="font-mono text-gray-900">{Math.floor(sessionTimeRemaining / 60)}:{(sessionTimeRemaining % 60).toString().padStart(2, '0')}</strong> <span className="text-[11px] text-gray-500">(desloga em 5 min para liberar vaga)</span>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => extendSession()}
+                  className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 transition cursor-pointer shrink-0"
+                  title="Renovar sessão por mais 5 minutos"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Renovar</span>
+                </button>
+              </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-gray-600 pt-2 border-t border-gray-200/60 gap-2">
                 <div className="flex items-center gap-1.5 flex-wrap">
