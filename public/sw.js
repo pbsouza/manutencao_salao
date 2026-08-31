@@ -1,4 +1,49 @@
-const CACHE_NAME = 'manutencao-sr-pwa-v3';
+const CACHE_NAME = 'manutencao-sr-pwa-v4';
+
+// Import Firebase Messaging scripts inside Service Worker for background push handling
+try {
+  importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
+  importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
+
+  const firebaseConfig = {
+    projectId: "gen-lang-client-0282193407",
+    appId: "1:247473690470:web:678a3df908e902cc019aa7",
+    apiKey: "AIzaSyC3GlZ-iIQiOPtW6WpzwRl1NQYGb_RfRl8",
+    authDomain: "gen-lang-client-0282193407.firebaseapp.com",
+    storageBucket: "gen-lang-client-0282193407.firebasestorage.app",
+    messagingSenderId: "247473690470"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const messaging = firebase.messaging();
+
+  messaging.onBackgroundMessage((payload) => {
+    console.log('[sw.js] Mensagem FCM em segundo plano:', payload);
+    const title = payload.notification?.title || payload.data?.title || 'Salão do Reino • Manutenção 🔔';
+    const body = payload.notification?.body || payload.data?.body || 'Atualização de serviço recebida.';
+    const icon = payload.notification?.icon || payload.data?.icon || '/icon-192.png';
+    const badge = payload.notification?.badge || payload.data?.badge || '/favicon-32x32.png';
+
+    return self.registration.showNotification(title, {
+      body,
+      icon,
+      badge,
+      vibrate: [200, 100, 200, 100, 200],
+      tag: payload.data?.tag || `fcm-bg-${Date.now()}`,
+      renotify: true,
+      requireInteraction: true,
+      data: {
+        url: payload.data?.url || '/',
+        linkTab: payload.data?.linkTab || 'kanban',
+        serviceId: payload.data?.serviceId || null,
+        timestamp: Date.now(),
+        ...(payload.data || {})
+      }
+    });
+  });
+} catch (fcmErr) {
+  console.warn('[sw.js] Firebase compat skip:', fcmErr);
+}
 
 // Get base path from ServiceWorker registration scope (e.g. '/manutencao_salao/' or '/')
 const getScopePath = () => {

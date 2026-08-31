@@ -490,19 +490,19 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                   <button
                     onClick={handleSendFCMTest}
                     disabled={isGeneratingFCM}
-                    className={`py-2 px-3 font-bold rounded-lg transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5 text-white ${
+                    className={`py-2 px-4 font-bold rounded-lg transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5 text-white ${
                       fcmTestSuccess ? 'bg-emerald-600' : 'bg-slate-900 hover:bg-slate-800'
                     }`}
                   >
                     {fcmTestSuccess ? (
                       <>
                         <Check className="w-3.5 h-3.5" />
-                        <span>Push Enviado! 📱</span>
+                        <span>Push Enviado a Todos! 📱</span>
                       </>
                     ) : (
                       <>
                         <Send className="w-3.5 h-3.5" />
-                        <span>Testar Push Real</span>
+                        <span>Testar Push em Todos os Aparelhos</span>
                       </>
                     )}
                   </button>

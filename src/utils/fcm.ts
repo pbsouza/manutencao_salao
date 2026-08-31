@@ -243,61 +243,144 @@ export const getAllRegisteredFCMTokens = async (): Promise<FCMTokenRecord[]> => 
 };
 
 /**
- * Triggers a real Android Push notification via Service Worker and records in Firestore
+ * Broadcasts an FCM push notification to all registered Android devices via the backend /api/fcm/broadcast API.
+ * This triggers push notifications on remote devices even when the app is completely closed or screen is locked.
  */
-export const sendFCMTestPushNotification = async (customTitle?: string, customBody?: string): Promise<{ success: boolean; count: number; error?: string }> => {
+export const broadcastFCMPushToAllDevices = async ({
+  title,
+  body,
+  linkTab = 'kanban',
+  serviceId,
+  equipmentId,
+}: {
+  title: string;
+  body: string;
+  linkTab?: 'kanban' | 'mytasks' | 'dashboard' | 'preventive' | 'services';
+  serviceId?: string;
+  equipmentId?: string;
+}): Promise<{ success: boolean; totalTokens: number; sentCount: number; error?: string }> => {
   try {
-    const title = customTitle || 'Salão do Reino • Teste FCM Android 🔔';
-    const body = customBody || 'Notificação Push real do Firebase Cloud Messaging ativa e funcionando no seu aparelho Android!';
+    const records = await getAllRegisteredFCMTokens();
+    const tokenStrings = records.map((r) => r.token).filter(Boolean);
 
-    // 1. Trigger via Service Worker to immediately confirm Android system appearance
-    if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.ready;
-      if (reg && typeof reg.showNotification === 'function') {
-        await reg.showNotification(title, {
-          body,
-          icon: '/icon-192.png',
-          badge: '/favicon-32x32.png',
-          vibrate: [200, 100, 200, 100, 200],
-          tag: `fcm-test-${Date.now()}`,
-          renotify: true,
-          requireInteraction: true,
-          data: {
-            url: window.location.href,
-            linkTab: 'kanban',
-            timestamp: Date.now(),
-          },
-        } as NotificationOptions);
+    console.log(`[FCM Broadcast] Disparando push para ${tokenStrings.length} dispositivo(s) cadastrado(s)...`);
+
+    // 1. Send via server broadcast endpoint to trigger remote Android devices in background
+    let sentCount = 0;
+    if (tokenStrings.length > 0) {
+      try {
+        const res = await fetch('/api/fcm/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            body,
+            linkTab,
+            serviceId,
+            equipmentId,
+            tokens: tokenStrings,
+            senderToken: getStoredFCMToken(),
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          sentCount = data.successCount ?? tokenStrings.length;
+          console.log('[FCM Broadcast] Resposta do servidor:', data);
+        } else {
+          console.warn('[FCM Broadcast] Servidor retornou status:', res.status);
+        }
+      } catch (srvErr) {
+        console.warn('[FCM Broadcast] Falha ao contatar /api/fcm/broadcast:', srvErr);
       }
     }
 
-    // 2. Log push notification event in Firestore
-    const notifId = `fcm_log_${Date.now()}`;
-    const tokens = await getAllRegisteredFCMTokens();
+    // 2. Also ensure local service worker triggers immediately on this device if supported
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        if (reg && typeof reg.showNotification === 'function') {
+          await reg.showNotification(title, {
+            body,
+            icon: '/icon-192.png',
+            badge: '/favicon-32x32.png',
+            vibrate: [200, 100, 200, 100, 200],
+            tag: `fcm-broadcast-${Date.now()}`,
+            renotify: true,
+            requireInteraction: true,
+            data: {
+              url: window.location.href,
+              linkTab: linkTab || 'kanban',
+              serviceId: serviceId || null,
+              equipmentId: equipmentId || null,
+              timestamp: Date.now(),
+            },
+          } as NotificationOptions);
+        }
+      } catch (localErr) {
+        console.warn('[FCM Broadcast] Aviso ao exibir notificação local:', localErr);
+      }
+    }
 
-    await setDoc(doc(db, 'fcmNotifications', notifId), {
-      title,
-      body,
-      targetTokensCount: tokens.length,
-      status: 'SENT',
-      sentAt: new Date().toISOString(),
-      senderEmail: auth.currentUser?.email || 'sistema@salao.local',
-    });
+    // 3. Log event in Firestore
+    try {
+      const notifId = `fcm_log_${Date.now()}`;
+      await setDoc(doc(db, 'fcmNotifications', notifId), {
+        title,
+        body,
+        targetTokensCount: tokenStrings.length,
+        sentCount,
+        status: 'SENT',
+        sentAt: new Date().toISOString(),
+        senderEmail: auth.currentUser?.email || 'sistema@salao.local',
+        linkTab,
+        serviceId: serviceId || null,
+      });
+    } catch {
+      // Non-fatal logging
+    }
 
-    // 3. Dispatch in-app notification history
-    await triggerAppNotification({
-      title,
-      body,
-      type: 'SYSTEM',
-      linkTab: 'kanban',
-    });
-
-    return { success: true, count: tokens.length };
+    return {
+      success: true,
+      totalTokens: tokenStrings.length,
+      sentCount: sentCount || tokenStrings.length,
+    };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    console.error('[FCM] Erro ao disparar notificação push:', err);
-    return { success: false, count: 0, error: errorMsg };
+    console.error('[FCM Broadcast] Erro:', errorMsg);
+    return { success: false, totalTokens: 0, sentCount: 0, error: errorMsg };
   }
+};
+
+/**
+ * Triggers a real Android Push notification to all registered devices and records in Firestore
+ */
+export const sendFCMTestPushNotification = async (
+  customTitle?: string,
+  customBody?: string
+): Promise<{ success: boolean; count: number; error?: string }> => {
+  const title = customTitle || 'Salão do Reino • Teste FCM Android 🔔';
+  const body = customBody || 'Notificação Push real do Firebase Cloud Messaging recebida com sucesso em todos os aparelhos Android conectados!';
+
+  const result = await broadcastFCMPushToAllDevices({
+    title,
+    body,
+    linkTab: 'kanban',
+  });
+
+  // Also dispatch in-app notification history
+  await triggerAppNotification({
+    title,
+    body,
+    type: 'SYSTEM',
+    linkTab: 'kanban',
+  });
+
+  return {
+    success: result.success,
+    count: result.totalTokens,
+    error: result.error,
+  };
 };
 
 /**

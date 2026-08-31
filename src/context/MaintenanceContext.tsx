@@ -68,6 +68,7 @@ import {
   saveNotificationSettings,
   triggerAppNotification,
 } from '../utils/notifications';
+import { broadcastFCMPushToAllDevices } from '../utils/fcm';
 
 interface MaintenanceContextType {
   services: ServiceItem[];
@@ -1191,6 +1192,14 @@ export const MaintenanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
         linkTab: 'kanban',
       });
       setNotifications(getNotificationHistory());
+
+      // Broadcast remote FCM Push to all registered Android devices (even when app is closed)
+      broadcastFCMPushToAllDevices({
+        title: `Salão do Reino • Novo Chamado 🔔`,
+        body: `[${newService.category} • ${newService.location}] ${newService.title} (Prioridade: ${newService.priority})`,
+        linkTab: 'kanban',
+        serviceId: newService.id,
+      }).catch((fcmErr) => console.warn('Erro ao propagar broadcast FCM:', fcmErr));
     } catch (notifErr) {
       console.warn('Erro ao disparar notificação local de novo problema:', notifErr);
     }
