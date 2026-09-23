@@ -65,8 +65,12 @@ const MainAppContent: React.FC = () => {
         setMobileOpen={setMobileSidebarOpen}
       />
 
-      {/* Main Content Workspace - Unified scrollable container */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto overflow-x-hidden">
+      {/* Main Content Workspace - Unified container (overflow-hidden for Kanban to enable independent column scrolls, scrollable for other tabs) */}
+      <div
+        className={`flex-1 flex flex-col min-w-0 h-full ${
+          currentActiveTab === 'kanban' ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden'
+        }`}
+      >
         {/* Top Header */}
         <Header
           onToggleMobile={() => setMobileSidebarOpen((prev) => !prev)}
@@ -76,7 +80,7 @@ const MainAppContent: React.FC = () => {
 
         {/* Pending Admin Approval Banner */}
         {firebaseUser && !isUserApproved && (
-          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-amber-900">
+          <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-amber-900">
             <div className="flex items-center gap-2">
               <span className="flex h-2 w-2 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -96,10 +100,20 @@ const MainAppContent: React.FC = () => {
         )}
 
         {/* Global Filter Bar (shown on Kanban/MyTasks when toggled on) */}
-        {(currentActiveTab === 'kanban' || currentActiveTab === 'mytasks') && showFilters && <FilterBar />}
+        {(currentActiveTab === 'kanban' || currentActiveTab === 'mytasks') && showFilters && (
+          <div className="shrink-0">
+            <FilterBar />
+          </div>
+        )}
 
         {/* Dynamic Workspace Views with generous bottom safe padding on mobile for bottom bar */}
-        <main className="flex-1 min-h-0 relative bg-gray-100/60 pb-32 sm:pb-36 md:pb-12">
+        <main
+          className={`flex-1 min-h-0 relative bg-gray-100/60 ${
+            currentActiveTab === 'kanban'
+              ? 'flex flex-col h-full overflow-hidden pb-0'
+              : 'pb-32 sm:pb-36 md:pb-12'
+          }`}
+        >
           {currentActiveTab === 'kanban' && (
             <KanbanBoard
               onSelectService={(service) => selectService(service)}

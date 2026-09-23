@@ -334,9 +334,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const activeColCost = activeColServices.reduce((acc, s) => acc + (s.estimatedCost || 0), 0);
 
   return (
-    <div id="kanban-board-workspace" className="flex flex-col min-h-full bg-[#F3F4F6]">
+    <div id="kanban-board-workspace" className="flex flex-col h-full min-h-0 bg-[#F3F4F6] overflow-hidden">
       {/* Top Quick Metrics Bar - Responsive grid for phone/tablet/desktop */}
-      <section className="p-2.5 sm:p-3 md:p-4 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 bg-gray-50 border-b border-gray-200 shrink-0">
+      <section className="shrink-0 p-2.5 sm:p-3 md:p-4 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 bg-gray-50 border-b border-gray-200">
         <div className="bg-white p-2.5 sm:p-3 rounded-lg border border-gray-200 flex flex-col justify-between min-h-[64px] sm:h-18 shadow-2xs">
           <span className="text-[9px] sm:text-[10px] text-gray-500 uppercase font-bold tracking-tight truncate">
             Em Aberto
@@ -393,13 +393,13 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       />
 
       {jsonRestoreStatus && (
-        <div className="mx-3 sm:mx-4 mt-2 sm:mt-3 p-2.5 sm:p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-bold text-emerald-800 flex items-center justify-between">
+        <div className="shrink-0 mx-3 sm:mx-4 mt-2 sm:mt-3 p-2.5 sm:p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-bold text-emerald-800 flex items-center justify-between">
           <span>{jsonRestoreStatus}</span>
         </div>
       )}
 
       {/* View Mode Bar for Mobile, Tablet & Desktop */}
-      <div className="px-3 sm:px-4 pt-2 pb-1 bg-gray-100 border-b border-gray-200 flex items-center justify-between gap-2 overflow-x-auto">
+      <div className="shrink-0 px-3 sm:px-4 pt-2 pb-1 bg-gray-100 border-b border-gray-200 flex items-center justify-between gap-2 overflow-x-auto">
         {/* View Mode Toggles */}
         <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-gray-200 shrink-0">
           <button
@@ -410,7 +410,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 ? 'bg-blue-600 text-white shadow-2xs'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
-            title="Visualização em Colunas Completas (Scroll Horizontal)"
+            title="Visualização em Colunas Completas (Scroll Horizontal com Scroll Vertical Independente por Coluna)"
           >
             <Columns className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Colunas</span>
@@ -460,7 +460,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* Horizontal Tabs selector when in 'tabs' mode or on small screens */}
       {viewMode === 'tabs' && (
-        <div className="px-2 sm:px-4 py-2 bg-white border-b border-gray-200 overflow-x-auto flex items-center gap-1.5 no-scrollbar select-none">
+        <div className="shrink-0 px-2 sm:px-4 py-2 bg-white border-b border-gray-200 overflow-x-auto flex items-center gap-1.5 no-scrollbar select-none">
           {KANBAN_COLUMNS.map((col, idx) => {
             const count = filteredServices.filter(
               (s) => normalizeServiceStatus(s.status) === col.status
@@ -497,7 +497,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* Loading Skeleton when first initializing from database */}
       {isLoading && services.length === 0 && (
-        <div className="mx-3 sm:mx-4 mt-3 p-3 bg-blue-50/60 border border-blue-200 rounded-xl flex items-center justify-between animate-pulse">
+        <div className="shrink-0 mx-3 sm:mx-4 mt-3 p-3 bg-blue-50/60 border border-blue-200 rounded-xl flex items-center justify-between animate-pulse">
           <div className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-ping" />
             <span className="text-xs font-bold text-blue-900">
@@ -510,7 +510,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* Empty Board Initial Onboarding Banner (Only when loaded and genuinely 0 services in board) */}
       {!isLoading && services.length === 0 && (
-        <div className="mx-3 sm:mx-4 mt-3 p-3.5 sm:p-4 bg-white border border-blue-200 rounded-xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4">
+        <div className="shrink-0 mx-3 sm:mx-4 mt-3 p-3.5 sm:p-4 bg-white border border-blue-200 rounded-xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="bg-blue-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded">
@@ -569,10 +569,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* VIEW MODE 1: SINGLE COLUMN TAB FOCUS (Optimal for Mobile, Tablet, Smartwatches) */}
       {viewMode === 'tabs' && (
-        <div className="flex-1 p-2.5 sm:p-4 max-w-2xl mx-auto w-full pb-32 sm:pb-36 md:pb-12">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden flex flex-col min-h-[400px]">
+        <div className="flex-1 min-h-0 p-2.5 sm:p-4 max-w-2xl mx-auto w-full h-full flex flex-col pb-20 md:pb-4">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden flex flex-col flex-1 min-h-0">
             {/* Column Title with Prev / Next navigators */}
-            <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+            <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between shrink-0">
               <button
                 type="button"
                 onClick={() =>
@@ -618,7 +618,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             </div>
 
             {/* Column Cards */}
-            <div className="p-2.5 sm:p-3 flex-1 space-y-2.5 bg-gray-50/50 overflow-y-auto pb-8">
+            <div className="p-2.5 sm:p-3 flex-1 min-h-0 space-y-2.5 bg-gray-50/50 overflow-y-auto overscroll-contain custom-scrollbar touch-pan-y pb-8">
               {activeColServices.length === 0 ? (
                 <div className="py-12 px-4 text-center border-2 border-dashed border-gray-200 rounded-xl bg-white">
                   <p className="text-xs font-bold text-gray-600">Nenhum serviço nesta etapa</p>
@@ -649,7 +649,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
             {/* Footer quick add */}
             {activeColumn.status === 'NOVOS PROBLEMAS' && activeColServices.length > 0 && (
-              <div className="p-2 bg-white border-t border-gray-200">
+              <div className="p-2 bg-white border-t border-gray-200 shrink-0">
                 <button
                   onClick={() => openNewServiceModal()}
                   className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
@@ -665,7 +665,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* VIEW MODE 2: LIST VIEW STREAM (Compact for all devices) */}
       {viewMode === 'list' && (
-        <div className="flex-1 p-2.5 sm:p-4 max-w-3xl mx-auto w-full space-y-4 pb-32 sm:pb-36 md:pb-12">
+        <div className="flex-1 min-h-0 overflow-y-auto p-2.5 sm:p-4 max-w-3xl mx-auto w-full space-y-4 pb-24 md:pb-6 custom-scrollbar">
           {KANBAN_COLUMNS.map((col) => {
             const colServices = filteredServices.filter(
               (s) => normalizeServiceStatus(s.status) === col.status
@@ -714,10 +714,13 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
       )}
 
-      {/* VIEW MODE 3: STANDARD MULTI-COLUMN BOARD (Horizontal Scroll) */}
+      {/* VIEW MODE 3: STANDARD MULTI-COLUMN BOARD (Horizontal Scroll & Independent Vertical Column Scroll) */}
       {viewMode === 'columns' && (
-        <div id="kanban-board-container" className="flex-1 overflow-x-auto p-2.5 sm:p-4 pb-32 sm:pb-36 md:pb-12">
-          <div className="flex items-start gap-3 sm:gap-4 min-w-[1720px] pb-16">
+        <div
+          id="kanban-board-container"
+          className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden p-2.5 sm:p-3 md:p-4 pb-20 md:pb-4"
+        >
+          <div className="flex items-stretch gap-3 sm:gap-4 min-w-max h-full min-h-0">
             {KANBAN_COLUMNS.map((col) => {
               const colServices = filteredServices.filter(
                 (s) => normalizeServiceStatus(s.status) === col.status
@@ -733,14 +736,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   onDragOver={(e) => handleDragOver(e, col.status)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, col.status)}
-                  className={`w-72 shrink-0 bg-gray-200/60 rounded-xl border flex flex-col min-h-[450px] transition-all shadow-2xs ${
+                  className={`w-72 sm:w-80 shrink-0 bg-gray-200/60 rounded-xl border flex flex-col h-full max-h-full transition-all shadow-2xs ${
                     isDropActive
                       ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/50'
                       : 'border-gray-300/80'
                   }`}
                 >
-                  {/* Column Header */}
-                  <div className="p-2.5 border-b border-gray-300 bg-gray-100/95 rounded-t-xl flex items-center justify-between">
+                  {/* Column Header - Pinned at top of this column */}
+                  <div className="p-2.5 border-b border-gray-300 bg-gray-100/95 rounded-t-xl flex items-center justify-between shrink-0 select-none">
                     <div className="flex items-center gap-2">
                       <Icon className="w-3.5 h-3.5 text-gray-600" />
                       <h2 className="text-[11px] font-black uppercase text-gray-700 tracking-tight">
@@ -760,8 +763,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     </div>
                   </div>
 
-                  {/* Column Cards List */}
-                  <div className="flex-1 p-2 space-y-2">
+                  {/* Column Cards List - Independent scroll for this column only! */}
+                  <div className="flex-1 min-h-0 p-2 space-y-2 overflow-y-auto overscroll-contain custom-scrollbar touch-pan-y">
                     {colServices.length === 0 ? (
                       isLoading ? (
                         <div className="space-y-2 p-1">
@@ -788,9 +791,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     )}
                   </div>
 
-                  {/* Column Footer: Quick Add for "NOVOS PROBLEMAS" */}
+                  {/* Column Footer: Quick Add for "NOVOS PROBLEMAS" - Pinned at bottom of column */}
                   {col.status === 'NOVOS PROBLEMAS' && (
-                    <div className="p-1.5 border-t border-gray-300 bg-gray-100/80 rounded-b-xl mt-auto">
+                    <div className="p-1.5 border-t border-gray-300 bg-gray-100/80 rounded-b-xl shrink-0 mt-auto">
                       <button
                         id="btn-kanban-quick-add"
                         onClick={() => openNewServiceModal()}

@@ -29,6 +29,8 @@ import {
   requestFCMToken,
   getStoredVapidKey,
   setStoredVapidKey,
+  getStoredFunctionUrl,
+  setStoredFunctionUrl,
   sendFCMTestPushNotification,
   getAllRegisteredFCMTokens,
   type FCMTokenRecord,
@@ -76,6 +78,8 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   const [isGeneratingFCM, setIsGeneratingFCM] = useState(false);
   const [fcmToken, setFcmToken] = useState<string | null>(() => getStoredFCMToken());
   const [vapidKey, setVapidKey] = useState<string>(() => getStoredVapidKey());
+  const [functionUrl, setFunctionUrl] = useState<string>(() => getStoredFunctionUrl());
+  const [copiedDeployCmd, setCopiedDeployCmd] = useState(false);
   const [fcmError, setFcmError] = useState<string | null>(null);
   const [registeredTokens, setRegisteredTokens] = useState<FCMTokenRecord[]>([]);
   const [permissionStatus, setPermissionStatus] = useState<string>(() =>
@@ -131,6 +135,17 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   const handleSaveVapidKey = (newKey: string) => {
     setVapidKey(newKey);
     setStoredVapidKey(newKey);
+  };
+
+  const handleSaveFunctionUrl = (newUrl: string) => {
+    setFunctionUrl(newUrl);
+    setStoredFunctionUrl(newUrl);
+  };
+
+  const handleCopyDeployCmd = () => {
+    navigator.clipboard.writeText('firebase deploy --only functions');
+    setCopiedDeployCmd(true);
+    setTimeout(() => setCopiedDeployCmd(false), 2500);
   };
 
   const handleCopyToken = () => {
@@ -578,24 +593,64 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                 )}
               </div>
 
-              {/* Backend Integration Code Snippet */}
-              <div className="p-3.5 bg-slate-900 text-slate-200 rounded-xl space-y-2">
+              {/* Firebase Cloud Functions Automation Section */}
+              <div className="p-3.5 bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-xl space-y-3 shadow-sm border border-indigo-900/50">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-white">Como disparar do seu Backend (Node.js / Firebase Admin):</span>
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-4 h-4 text-orange-400" />
+                    <h4 className="font-bold text-xs text-white">Disparo na Nuvem com App Fechado (Cloud Functions)</h4>
+                  </div>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
+                    Código Pronto na Raiz
+                  </span>
                 </div>
-                <pre className="text-[10px] font-mono text-emerald-400 bg-slate-950 p-2.5 rounded-lg overflow-x-auto leading-relaxed">
-{`// Envio via Firebase Admin SDK
-admin.messaging().send({
-  token: '${fcmToken ? fcmToken.substring(0, 20) + '...' : 'TOKEN_FCM_DO_ANDROID'}',
-  notification: {
-    title: 'Urgente: Reparo no Salão do Reino 🛠️',
-    body: 'GUT Alta detectada no Ar-Condicionado.'
-  },
-  data: { linkTab: 'kanban', serviceId: '123' },
-  android: { priority: 'high' }
-});`}
-                </pre>
+
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Para que o celular toque com o <strong>app totalmente fechado e tela apagada</strong>, as notificações devem ser disparadas pelos servidores do Google através do arquivo <code className="bg-slate-800 text-orange-300 px-1 py-0.5 rounded font-mono text-[10px]">functions/index.js</code> gerado no projeto.
+                </p>
+
+                <div className="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Comando para Ativar no Terminal:</span>
+                    <button
+                      type="button"
+                      onClick={handleCopyDeployCmd}
+                      className="flex items-center gap-1 text-[11px] text-orange-300 hover:text-orange-200 cursor-pointer font-bold"
+                    >
+                      {copiedDeployCmd ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span className="text-emerald-400">Copiado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copiar Comando</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <code className="block font-mono text-[11px] text-emerald-400 select-all p-1 bg-black/40 rounded">
+                    firebase deploy --only functions
+                  </code>
+                </div>
+
+                {/* Cloud Function URL (Optional) */}
+                <div className="pt-2 border-t border-slate-800 space-y-1.5">
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    URL da Cloud Function HTTPS (Opcional para testes manuais diretos):
+                  </label>
+                  <input
+                    type="url"
+                    value={functionUrl}
+                    onChange={(e) => handleSaveFunctionUrl(e.target.value)}
+                    placeholder="https://us-central1-gen-lang-client-0282193407.cloudfunctions.net/sendPushNotification"
+                    className="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-[10px] font-mono text-slate-200 placeholder:text-slate-600 focus:outline-hidden focus:border-orange-400"
+                  />
+                </div>
               </div>
+
+              {/* Native Push Status on Android / Device */}
             </div>
           ) : (
             <div className="space-y-4 text-xs">

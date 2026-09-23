@@ -17,6 +17,22 @@ export interface FCMTokenRecord {
 
 const FCM_TOKEN_STORAGE_KEY = 'sr_fcm_registration_token';
 const FCM_VAPID_STORAGE_KEY = 'sr_fcm_vapid_key';
+const FCM_FUNCTION_URL_STORAGE_KEY = 'sr_fcm_function_url';
+
+// Cloud Function URL setting for direct HTTPS push triggers
+export const getStoredFunctionUrl = (): string => {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem(FCM_FUNCTION_URL_STORAGE_KEY) || '';
+};
+
+export const setStoredFunctionUrl = (url: string): void => {
+  if (typeof window === 'undefined') return;
+  if (url.trim()) {
+    localStorage.setItem(FCM_FUNCTION_URL_STORAGE_KEY, url.trim());
+  } else {
+    localStorage.removeItem(FCM_FUNCTION_URL_STORAGE_KEY);
+  }
+};
 
 // Default / fallback VAPID key or user-configured VAPID key
 export const getStoredVapidKey = (): string => {
@@ -289,19 +305,57 @@ export const broadcastFCMPushToAllDevices = async ({
           }),
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          sentCount = data.successCount ?? tokenStrings.length;
-          console.log('[FCM Broadcast] Resposta do servidor:', data);
-        } else {
-          console.warn('[FCM Broadcast] Servidor retornou status:', res.status);
+        // Also try custom deployed Firebase Cloud Function HTTP endpoint if configured
+        const functionUrl = getStoredFunctionUrl();
+        if (functionUrl && (!res || !res.ok)) {
+          try {
+            const cfRes = await fetch(functionUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                title,
+                body,
+                linkTab,
+                serviceId,
+                equipmentId,
+                tokens: tokenStrings,
+                senderToken: getStoredFCMToken(),
+              }),
+            });
+            if (cfRes.ok) {
+              const cfData = await cfRes.json();
+              sentCount = cfData.sentCount ?? tokenStrings.length;
+              console.log('[FCM Broadcast] Resposta da Cloud Function HTTPS:', cfData);
+            }
+          } catch (cfErr) {
+            console.warn('[FCM Broadcast] Erro ao chamar Cloud Function URL:', cfErr);
+          }
         }
       } catch (srvErr) {
         console.warn('[FCM Broadcast] Falha ao contatar /api/fcm/broadcast:', srvErr);
       }
     }
 
-    // 2. Log event in Firestore
+    // 2. Queue in Firestore collection 'fcmQueue' (Always works from any frontend, including GitHub Pages!)
+    // If a Firebase Cloud Function is deployed with Firestore trigger, it picks this up and wakes all phones!
+    try {
+      const queueId = `queue_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      await setDoc(doc(db, 'fcmQueue', queueId), {
+        title,
+        body,
+        linkTab,
+        serviceId: serviceId || null,
+        equipmentId: equipmentId || null,
+        senderToken: getStoredFCMToken() || null,
+        status: 'PENDING',
+        createdAt: new Date().toISOString(),
+      });
+      console.log('[FCM Queue] Notificação push registrada na fila Firestore:', queueId);
+    } catch (queueErr) {
+      console.warn('[FCM Queue] Aviso ao gravar na fila Firestore:', queueErr);
+    }
+
+    // 3. Log event in Firestore
     try {
       const notifId = `fcm_log_${Date.now()}`;
       await setDoc(doc(db, 'fcmNotifications', notifId), {

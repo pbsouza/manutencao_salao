@@ -95,6 +95,20 @@
         "status": { "type": "string" },
         "sentAt": { "type": "string" }
       }
+    },
+    "FCMQueue": {
+      "title": "FCMQueue",
+      "description": "Fila de notificações push para processamento assíncrono em segundo plano",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "linkTab": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "equipmentId": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      }
     }
   },
   "firestore": {
@@ -133,6 +147,10 @@
     "/fcmNotifications/{notifId}": {
       "schema": { "$ref": "#/entities/FCMNotification" },
       "description": "Histórico de notificações enviadas via FCM"
+    },
+    "/fcmQueue/{queueId}": {
+      "schema": { "$ref": "#/entities/FCMQueue" },
+      "description": "Fila de mensagens push para disparo assíncrono via Cloud Functions"
     }
   }
 }
