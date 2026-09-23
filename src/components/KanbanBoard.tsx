@@ -569,7 +569,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* VIEW MODE 1: SINGLE COLUMN TAB FOCUS (Optimal for Mobile, Tablet, Smartwatches) */}
       {viewMode === 'tabs' && (
-        <div className="flex-1 min-h-0 p-2.5 sm:p-4 max-w-2xl mx-auto w-full h-full flex flex-col pb-20 md:pb-4">
+        <div className="flex-1 min-h-0 p-2 sm:p-4 max-w-2xl mx-auto w-full h-full flex flex-col pb-2 md:pb-4">
           <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden flex flex-col flex-1 min-h-0">
             {/* Column Title with Prev / Next navigators */}
             <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between shrink-0">
@@ -617,8 +617,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               </button>
             </div>
 
-            {/* Column Cards */}
-            <div className="p-2.5 sm:p-3 flex-1 min-h-0 space-y-2.5 bg-gray-50/50 overflow-y-auto overscroll-contain custom-scrollbar touch-pan-y pb-8">
+            {/* Column Cards with generous bottom padding so the last card is fully visible */}
+            <div className="p-2.5 sm:p-3 flex-1 min-h-0 space-y-2.5 bg-gray-50/50 overflow-y-auto overscroll-contain custom-scrollbar touch-pan-y pb-20 sm:pb-12">
               {activeColServices.length === 0 ? (
                 <div className="py-12 px-4 text-center border-2 border-dashed border-gray-200 rounded-xl bg-white">
                   <p className="text-xs font-bold text-gray-600">Nenhum serviço nesta etapa</p>
@@ -636,14 +636,18 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   )}
                 </div>
               ) : (
-                activeColServices.map((service) => (
-                  <ServiceCard
-                    key={service.id}
-                    service={service}
-                    onSelect={onSelectService}
-                    onDragStart={handleDragStart}
-                  />
-                ))
+                <>
+                  {activeColServices.map((service) => (
+                    <ServiceCard
+                      key={service.id}
+                      service={service}
+                      onSelect={onSelectService}
+                      onDragStart={handleDragStart}
+                    />
+                  ))}
+                  {/* Extra bottom scroll buffer */}
+                  <div className="h-10 shrink-0 select-none pointer-events-none" aria-hidden="true" />
+                </>
               )}
             </div>
 
@@ -718,7 +722,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       {viewMode === 'columns' && (
         <div
           id="kanban-board-container"
-          className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden p-2.5 sm:p-3 md:p-4 pb-20 md:pb-4"
+          className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden p-2 sm:p-3 md:p-4 pb-2 sm:pb-3 md:pb-4"
         >
           <div className="flex items-stretch gap-3 sm:gap-4 min-w-max h-full min-h-0">
             {KANBAN_COLUMNS.map((col) => {
@@ -763,8 +767,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     </div>
                   </div>
 
-                  {/* Column Cards List - Independent scroll for this column only! */}
-                  <div className="flex-1 min-h-0 p-2 space-y-2 overflow-y-auto overscroll-contain custom-scrollbar touch-pan-y">
+                  {/* Column Cards List - Independent scroll with bottom buffer so the last card is never cut off */}
+                  <div className="flex-1 min-h-0 p-2 pb-16 sm:pb-10 space-y-2 overflow-y-auto overscroll-contain custom-scrollbar touch-pan-y">
                     {colServices.length === 0 ? (
                       isLoading ? (
                         <div className="space-y-2 p-1">
@@ -780,14 +784,18 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         </div>
                       )
                     ) : (
-                      colServices.map((service) => (
-                        <ServiceCard
-                          key={service.id}
-                          service={service}
-                          onSelect={onSelectService}
-                          onDragStart={handleDragStart}
-                        />
-                      ))
+                      <>
+                        {colServices.map((service) => (
+                          <ServiceCard
+                            key={service.id}
+                            service={service}
+                            onSelect={onSelectService}
+                            onDragStart={handleDragStart}
+                          />
+                        ))}
+                        {/* Extra bottom scroll buffer so the last card has clearance */}
+                        <div className="h-10 shrink-0 select-none pointer-events-none" aria-hidden="true" />
+                      </>
                     )}
                   </div>
 

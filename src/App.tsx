@@ -110,7 +110,7 @@ const MainAppContent: React.FC = () => {
         <main
           className={`flex-1 min-h-0 relative bg-gray-100/60 ${
             currentActiveTab === 'kanban'
-              ? 'flex flex-col h-full overflow-hidden pb-0'
+              ? 'flex flex-col h-full overflow-hidden pb-16 md:pb-0'
               : 'pb-32 sm:pb-36 md:pb-12'
           }`}
         >
