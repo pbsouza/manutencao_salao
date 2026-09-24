@@ -130,6 +130,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   } = useMaintenance();
 
   const jsonInputRef = useRef<HTMLInputElement>(null);
+  const boardContainerRef = useRef<HTMLDivElement>(null);
   const [jsonRestoreStatus, setJsonRestoreStatus] = useState<string | null>(null);
   const [draggedServiceId, setDraggedServiceId] = useState<string | null>(null);
   const [activeDropColumn, setActiveDropColumn] = useState<ServiceStatus | null>(null);
@@ -137,6 +138,15 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   // Responsive View Mode: 'columns' (scroll), 'tabs' (single column focus for phone/smartwatch), 'list' (compact stream)
   const [viewMode, setViewMode] = useState<'columns' | 'tabs' | 'list'>('columns');
   const [selectedColumnIndex, setSelectedColumnIndex] = useState<number>(0);
+
+  const scrollBoardHorizontally = (direction: 'left' | 'right') => {
+    if (boardContainerRef.current) {
+      boardContainerRef.current.scrollBy({
+        left: direction === 'left' ? -320 : 320,
+        behavior: 'smooth',
+      });
+    }
+  };
 
   const handleJSONFileRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -447,6 +457,33 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
         {/* Quick Add Problem / Template Action */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Quick Horizontal Column Scroll Buttons (active in 'columns' mode) */}
+          {viewMode === 'columns' && (
+            <div className="flex items-center gap-0.5 bg-white p-0.5 rounded-lg border border-gray-200 shrink-0 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => scrollBoardHorizontally('left')}
+                className="p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition cursor-pointer"
+                title="Rolar colunas para a esquerda"
+                aria-label="Rolar colunas para a esquerda"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[10px] text-gray-500 font-bold px-1 select-none hidden sm:inline">
+                Navegar Colunas
+              </span>
+              <button
+                type="button"
+                onClick={() => scrollBoardHorizontally('right')}
+                className="p-1 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition cursor-pointer"
+                title="Rolar colunas para a direita"
+                aria-label="Rolar colunas para a direita"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <button
             onClick={() => openNewServiceModal()}
             className="flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg transition shadow-2xs cursor-pointer"
@@ -618,7 +655,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             </div>
 
             {/* Column Cards with generous bottom padding so the last card is fully visible */}
-            <div className="p-2.5 sm:p-3 flex-1 min-h-0 space-y-2.5 bg-gray-50/50 overflow-y-auto overscroll-contain custom-scrollbar touch-pan-y pb-20 sm:pb-12">
+            <div className="p-2.5 sm:p-3 flex-1 min-h-0 space-y-2.5 bg-gray-50/50 overflow-y-auto overscroll-y-contain custom-scrollbar pb-20 sm:pb-12">
               {activeColServices.length === 0 ? (
                 <div className="py-12 px-4 text-center border-2 border-dashed border-gray-200 rounded-xl bg-white">
                   <p className="text-xs font-bold text-gray-600">Nenhum serviço nesta etapa</p>
@@ -721,8 +758,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       {/* VIEW MODE 3: STANDARD MULTI-COLUMN BOARD (Horizontal Scroll & Independent Vertical Column Scroll) */}
       {viewMode === 'columns' && (
         <div
+          ref={boardContainerRef}
           id="kanban-board-container"
-          className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden p-2 sm:p-3 md:p-4 pb-2 sm:pb-3 md:pb-4"
+          className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden p-2 sm:p-3 md:p-4 pb-2 sm:pb-3 md:pb-4 scroll-smooth custom-scrollbar"
         >
           <div className="flex items-stretch gap-3 sm:gap-4 min-w-max h-full min-h-0">
             {KANBAN_COLUMNS.map((col) => {
@@ -768,7 +806,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   </div>
 
                   {/* Column Cards List - Independent scroll with bottom buffer so the last card is never cut off */}
-                  <div className="flex-1 min-h-0 p-2 pb-16 sm:pb-10 space-y-2 overflow-y-auto overscroll-contain custom-scrollbar touch-pan-y">
+                  <div className="flex-1 min-h-0 p-2 pb-16 sm:pb-10 space-y-2 overflow-y-auto overscroll-y-contain custom-scrollbar">
                     {colServices.length === 0 ? (
                       isLoading ? (
                         <div className="space-y-2 p-1">
